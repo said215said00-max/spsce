@@ -1,0 +1,17 @@
+{
+  "background_color": "#0b0b14",
+  "dir": "auto",
+  "display": "standalone",
+  "name": "DuoSpace",
+  "orientation": "any",
+  "scope": "/https://spider08man008-hash.github.io/duo/",
+  "short_name": "DuoSpace",
+  "start_url": "/https://spider08man008-hash.github.io/duo/",
+  "theme_color": "#6c63ff",
+  "id": "DuoSpace",
+  "description": "A private world for two. Chat, play, share memories and stay together.",
+  "lang": "en",
+  "categories": [
+    "social"
+  ]
+}

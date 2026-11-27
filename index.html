@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DuoSpace — Private chat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293653;--text:#eef3ff;--muted:#9eabc5;--accent:#8b7cff;--good:#5ed6a0;--bad:#ff7d91}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#20284b 0,#0b1020 55%);font:15px system-ui;color:var(--text);min-height:100vh;display:grid;place-items:center;padding:18px 18px 92px}
+main{width:min(1100px,100%)}header{text-align:center;margin-bottom:20px}.app-header{position:relative;display:flex;align-items:center;justify-content:center}.settings-trigger{position:absolute;right:0;top:4px;width:44px;height:44px;padding:0;font-size:21px;margin:0;border:1px solid var(--line);border-radius:13px}.app-header h1{margin:0}
+#space{display:block;width:100%}
+.sidebar{position:fixed;z-index:50;left:50%;bottom:12px;transform:translateX(-50%);width:min(620px,calc(100% - 24px));background:#111a2df2;border:1px solid #354363;border-radius:18px;padding:6px 8px;box-shadow:0 12px 40px #0009;backdrop-filter:blur(16px)}
+.sidebar .brand,.sidebar .account{display:none}.sidebar nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;align-items:center}
+.navbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;width:100%;background:transparent;padding:7px 2px;color:var(--muted);margin:0;border:1px solid transparent;font-size:11px;min-width:0}
+.navbtn.active{background:#343b55;color:var(--text);border-color:#47557a}.navbtn span{font-size:10px;white-space:nowrap}
+.content{min-width:0}.view{display:none}.view.active{display:block}
+.placeholder{min-height:260px;display:grid;place-items:center;text-align:center;color:var(--muted)}
+@media(max-width:650px){.sidebar{bottom:8px}.navbtn{padding:6px 1px}.navbtn span{font-size:9px}body{padding:10px 10px 82px}}h1{margin:0;font-size:32px;letter-spacing:-1px}header p,.muted{color:var(--muted)}.panel{background:#151d32ed;border:1px solid var(--line);border-radius:18px;padding:20px;margin:12px 0;box-shadow:0 18px 60px #0005}
+input,button,select{font:inherit;border-radius:11px;padding:12px 14px;width:100%;border:1px solid var(--line);background:#0e1629;color:var(--text);margin:6px 0}
+button{background:var(--accent);border:0;font-weight:700;cursor:pointer}button.secondary{background:#273452}button:disabled{opacity:.5;cursor:wait}
+.settings-section{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}.settings-section h3{margin:4px 0 10px}.settings-section input[type=color]{height:42px;padding:4px}.settings-section select{width:100%;border:1px solid var(--line);background:#0e1629;color:var(--text);border-radius:11px;padding:12px;margin:6px 0}.setting-check{display:flex;align-items:center;gap:8px;color:var(--muted);margin:10px 0}.setting-check input{width:auto;margin:0}body.light-mode{background:#eef2ff;color:#18223a}body.light-mode .panel,body.light-mode .game-invite-card{background:#fff;color:#18223a;border-color:#d5dced}body.light-mode input,body.light-mode select{background:#f6f8ff;color:#18223a;border-color:#d5dced}body.light-mode #messages{background:#f8faff;border-color:#d5dced}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none!important}.status{padding:10px;border-radius:10px;background:#0e1629;color:var(--muted);margin:10px 0;white-space:pre-wrap}.status.error{color:var(--bad)}.status.ok{color:var(--good)}
+#messages{height:320px;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:14px;background:#0c1426;scroll-behavior:smooth}
+.chat-compose{display:flex;align-items:center;gap:9px;margin-top:12px;padding:6px 7px 6px 12px;border:1px solid var(--line);border-radius:18px;background:#0e1629}.chat-compose input{flex:1;min-width:0;margin:0;padding:10px 4px;border:0;outline:0;background:transparent;box-shadow:none}.chat-compose button{width:42px;height:42px;min-width:42px;padding:0;margin:0;border-radius:14px;font-size:21px;line-height:1;display:grid;place-items:center;box-shadow:0 5px 16px #0003}.chat-compose button:disabled{opacity:.45}.chat-compose:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.msg{max-width:85%;padding:9px 12px;border-radius:13px;background:#263452;margin:8px 0;overflow-wrap:anywhere}.msg.mine{margin-left:auto;background:#5147a0}.msg small{display:block;color:#c5cce0;font-size:11px;margin-top:4px}.msg-tools{display:flex;justify-content:flex-end;margin-top:5px}.msg-tools button{width:auto;margin:0;padding:3px 8px;font-size:10px;background:#ffffff18}.msg-image{display:block;max-width:min(280px,100%);max-height:320px;border-radius:10px;margin-top:5px}.msg.deleted .msg-body{opacity:.65;font-style:italic}
+.row{display:flex;gap:8px}.row input{flex:1}.row button{width:auto;min-width:100px}.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.topline button{width:auto}
+code{color:#c8c0ff;overflow-wrap:anywhere}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.panel{padding:15px}.row{flex-direction:column}.row button{width:100%}}
+@keyframes heartPulse{from{transform:scale(.9);opacity:.75}to{transform:scale(1.15);opacity:1}}
+
+
+.word-game-panel{display:flex;flex-direction:column;gap:12px}.word-reveal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0}.word-reveal-card{min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#202b46,#151d32);text-align:center;overflow-wrap:anywhere}.word-reveal-label{font-size:13px;color:var(--muted)}.word-reveal-card strong{font-size:clamp(25px,5vw,42px);line-height:1.2;color:#fff;max-width:100%;overflow-wrap:anywhere}.word-entry-row{margin-top:8px}.word-entry-row input{min-width:0}.word-game-panel #wordStatus{text-align:center;font-size:15px}.word-reveal-card.is-match{border-color:#45c99a;box-shadow:0 0 0 1px #45c99a33}.word-reveal-card.is-different{border-color:#d69b5b}
+@media(max-width:560px){.word-reveal-grid{gap:8px}.word-reveal-card{min-height:120px;padding:12px}.word-reveal-label{font-size:11px}.word-entry-row{flex-direction:row}.word-entry-row button{width:auto;min-width:90px}}
+.game-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.game-tile{min-height:145px;background:#202b46;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:16px}.game-tile span{font-size:32px}.game-tile small{color:var(--muted);font-weight:400}.quiz-scoreboard{display:flex;gap:10px;justify-content:space-between;margin:10px 0 16px}.quiz-score-card{flex:1;text-align:center;padding:12px 10px;border-radius:14px;background:#202b46;border:1px solid var(--line)}.quiz-score-card strong{display:block;font-size:28px;font-weight:800;margin-top:4px;color:#fff}.quiz-score-card span{font-size:12px;color:var(--muted)}.game-screen .gameBack{width:auto;margin-bottom:10px}.game-invite{position:fixed;inset:0;background:#050914cc;display:grid;place-items:center;padding:18px;z-index:100}.game-invite-card{width:min(420px,100%);background:#151d32;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 20px 70px #0009}.game-invite-actions{display:flex;gap:10px}.game-invite-actions button{flex:1}@media(max-width:560px){.game-menu-grid{grid-template-columns:1fr}}
+.profile-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);vertical-align:middle;background:#273452}.profile-inline{display:inline-flex;align-items:center;gap:8px}.msg-head{display:flex;align-items:center;gap:7px;margin-bottom:4px}.msg-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover}.profile-preview{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);background:#273452;display:block;margin:10px auto}.avatar-picker{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;max-width:360px;margin:12px auto}.avatar-choice{width:100%;aspect-ratio:1;border:2px solid var(--line);border-radius:14px;background:#273452;font-size:27px;cursor:pointer}.avatar-choice.selected{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+
+.auth-fields{display:grid;gap:10px;margin:16px 0}.auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.auth-actions button{min-width:0}
+
+
+/* Home redesign */
+.home-hero{position:relative;overflow:hidden;padding:26px;background:linear-gradient(135deg,#222b4d,#151d32 60%,#30265a);border:1px solid #3b4770;border-radius:24px;box-shadow:0 18px 50px #0005}.home-hero:after{content:"✦";position:absolute;right:22px;top:16px;font-size:58px;color:#a99cff;opacity:.2}.home-clock{font-size:clamp(36px,7vw,64px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin:16px 0 6px;font-variant-numeric:tabular-nums}.home-date{font-size:17px;color:#c4cce5}.home-connection{display:flex;align-items:center;justify-content:center;gap:14px;margin:22px auto 14px;max-width:480px}.home-person{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:84px}.home-person img{width:68px;height:68px;border-radius:50%;border:3px solid var(--accent);background:#273452;object-fit:cover;box-shadow:0 0 20px #8b7cff33}.home-rope{height:4px;flex:1;max-width:150px;position:relative;background:linear-gradient(90deg,#a99cff,#e6b9ff);border-radius:4px;box-shadow:0 0 12px #b89aff55;transition:all .3s}.home-rope:after{content:"♥";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#20284b;padding:0 8px;color:#d6baff;font-size:18px}.home-rope.broken{background:transparent;box-shadow:none}.home-rope.broken:before{content:"";position:absolute;left:0;right:0;top:0;border-top:2px dashed #59627c}.home-rope.broken:after{content:"✕";background:transparent;color:#77809a}.home-presence-note{text-align:center;color:var(--muted);font-size:13px}.availability{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.availability button{width:auto;flex:1;min-width:95px;padding:9px 12px;background:#263452;border:1px solid var(--line)}.availability button.selected{border-color:var(--accent);background:#43386c}.room-code-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.room-code-row #roomInfo{flex:1;min-width:0}.room-code-row button{width:auto;white-space:nowrap}.home-room-panel{border:1px solid #354363;background:linear-gradient(140deg,#151d32,#11182b)}
+@media(max-width:560px){.home-hero{padding:20px}.home-date{font-size:15px}.home-person img{width:58px;height:58px}}
+
+
+/* Compact one-screen Home layout */
+@media (max-width:560px){
+  body{display:block;min-height:100dvh;padding:7px 9px 76px;}
+  main{width:100%;max-width:440px;margin:0 auto;}
+  header.app-header{margin-bottom:7px;min-height:34px;}
+  header.app-header h1{font-size:23px;line-height:1.1}
+  header.app-header p{display:none}
+  .settings-trigger{width:34px;height:34px;top:0;right:2px;font-size:18px}
+  #view-home{display:none}
+  #view-home.active{display:flex;flex-direction:column;gap:7px;}
+  .home-hero{padding:11px 13px;border-radius:17px;box-shadow:0 8px 24px #0004}
+  .home-hero:after{font-size:36px;right:12px;top:8px}
+  .home-hero .topline{gap:6px}
+  .home-hero .profile-avatar{width:32px;height:32px}
+  .home-hero .topline strong{font-size:13px}
+  .home-hero .topline button{padding:6px 9px;font-size:11px;margin:0}
+  .home-clock{font-size:clamp(35px,10vw,47px);letter-spacing:-1.5px;line-height:1;margin:7px 0 2px}
+  .home-date{font-size:12px;line-height:1.2}
+  .home-hero>p.muted{display:none}
+  .home-connection{gap:9px;margin:10px auto 5px;max-width:330px;width:100%}
+  .home-person{gap:3px;min-width:66px;font-size:12px}
+  .home-person img{width:49px;height:49px;border-width:2px}
+  .home-person small{font-size:10px;line-height:1.1}
+  .home-rope{max-width:none;height:3px}
+  .home-rope:after{font-size:14px;padding:0 5px}
+  .home-presence-note{font-size:10px;line-height:1.2;margin:2px 0 5px}
+  #goChat{padding:7px 10px;margin:3px 0 0;font-size:12px}
+  #view-home>.panel{padding:8px 10px;margin:0;border-radius:14px;box-shadow:0 6px 18px #0003}
+  #view-home>.panel h3{font-size:13px;margin:0 0 3px}
+  #view-home>.panel p.muted{display:none}
+  .availability{gap:6px;margin:5px 0 0}
+  .availability button{min-width:0;padding:7px 4px;margin:0;font-size:11px;border-radius:9px}
+  .home-room-panel h3{margin-bottom:4px!important}
+  .room-code-row{gap:5px;flex-wrap:nowrap}
+  .room-code-row #roomInfo{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .room-code-row button{padding:6px 8px;font-size:10px;margin:0}
+  #view-home>.home-room-panel .grid{grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
+  #view-home>.home-room-panel .grid button,
+  #view-home>.home-room-panel .grid input{font-size:11px;padding:7px 6px;margin:2px 0;border-radius:8px;min-width:0}
+  #view-home>.home-room-panel .grid input{height:34px}
+  #view-home>.home-room-panel .status{font-size:10px;padding:5px 7px;margin:4px 0 0;line-height:1.2;max-height:30px;overflow:hidden}
+  .sidebar{bottom:6px;padding:4px 6px;border-radius:14px}
+  .navbtn{padding:5px 1px;gap:1px}
+}
+@media(max-width:380px){
+  .home-clock{font-size:36px}.home-person img{width:43px;height:43px}
+  .availability button{font-size:10px}.home-hero{padding:9px 10px}
+}
+@media(max-height:700px) and (max-width:560px){
+  body{padding-top:4px}.home-hero{padding-top:8px;padding-bottom:8px}
+  .home-connection{margin-top:7px;margin-bottom:3px}
+  .home-person img{width:43px;height:43px}
+  #view-home>.panel{padding:7px 9px}
+  .sidebar{bottom:4px}
+}
+
+
+/* Phone-first full-screen layout: the page itself never scrolls. */
+@media(max-width:650px){
+ html,body{width:100%;height:100%;min-height:100%;overflow:hidden}
+ body{display:block;padding:5px 8px 0;min-height:100dvh;height:100dvh}
+ main{width:100%;height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;min-height:0}
+ header.app-header{flex:0 0 34px;margin:0 0 5px;min-height:34px}
+ header.app-header h1{font-size:22px;line-height:1}
+ #space{flex:1;min-height:0;display:flex;flex-direction:column}
+ .content{flex:1;min-height:0;height:calc(100dvh - 112px);overflow:hidden;padding-bottom:58px}
+ .view{height:100%;min-height:0;overflow:hidden}
+ .view.active{display:flex;flex-direction:column;gap:7px}
+ .view>.panel,.view>.game-screen{min-height:0;margin:0;padding:12px;border-radius:15px}
+ .view>.panel{overflow:hidden}
+ #view-home{overflow:hidden}
+ #view-home .home-hero{flex:0 0 auto;padding:10px 12px;border-radius:16px}
+ #view-home .home-clock{font-size:38px;margin:7px 0 3px}
+ #view-home .home-date{font-size:11px}
+ #view-home .home-connection{margin:8px auto 5px;gap:8px}
+ #view-home .home-person{gap:3px;min-width:65px;font-size:11px}
+ #view-home .home-person img{width:42px;height:42px}
+ #view-home .home-presence-note{font-size:10px;line-height:1.15}
+ #view-home .home-hero>p.muted{display:none}
+ #view-home #leaveRoom{width:100%;padding:8px;margin:6px 0 0;font-size:12px}
+ #view-home>.panel{padding:8px 10px}
+ #view-home>.panel h3{font-size:13px;margin:0 0 3px}
+ #view-home>.panel p.muted{display:none}
+ #view-home .availability{gap:5px;margin:4px 0 0}
+ #view-home .availability button{min-width:0;padding:7px 3px;font-size:10px;margin:0}
+ #view-home .home-room-panel{flex:1;min-height:0}
+ #view-home .home-room-panel .grid{grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
+ #view-home .home-room-panel .grid button,#view-home .home-room-panel .grid input{font-size:10px;padding:7px 5px;margin:2px 0;min-width:0}
+ #view-home .home-room-panel .status{font-size:10px;padding:5px 7px;margin:4px 0;max-height:32px;overflow:hidden}
+ #view-chat{min-height:0}
+ #view-chat #chatPanel{height:100%;display:flex;flex-direction:column;min-height:0;padding:11px}
+ #view-chat #chatPanel.hidden{display:none!important}
+ #messages{height:auto;flex:1;min-height:0;overflow-y:auto;padding:9px}
+ .chat-compose{flex:0 0 auto}
+ #view-chat #chatPanel>.muted:last-child{display:none}
+ #view-games{overflow:hidden}
+ #view-games #gamesMenu{flex:0 0 auto;padding:12px}
+ .game-menu-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .game-tile{min-height:105px;padding:7px 3px;gap:5px;font-size:11px}
+ .game-tile span{font-size:25px}.game-tile small{font-size:9px}
+ .game-screen{flex:1;min-height:0;overflow:hidden}
+ .game-screen>.panel{height:100%;margin:0;padding:10px;overflow:hidden}
+ #memoryGrid{gap:5px!important}
+ #memoryGrid button{min-height:0!important;height:clamp(37px,7.2vh,56px);padding:2px;font-size:21px;margin:0}
+ #view-memories>.panel{height:100%;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+ #memoryBook{flex:1;min-height:0}
+ .sidebar{bottom:5px;padding:4px 6px;width:calc(100% - 16px);max-width:520px}
+ .navbtn{padding:4px 1px;gap:1px}.navbtn span{font-size:9px}
+ #settingsModal{padding:6px;align-items:stretch;overflow:hidden}
+ #settingsModal .game-invite-card{width:100%;max-width:520px;height:100%;max-height:100%;padding:10px 12px;border-radius:14px;overflow-y:auto;overscroll-behavior:contain}
+ #settingsModal .topline{position:sticky;top:-10px;background:inherit;z-index:2;padding:2px 0 5px}
+ #settingsModal .topline h2{font-size:18px;margin:2px 0}
+ #settingsModal .settings-section{padding-top:6px;margin-top:6px}
+ #settingsModal .settings-section h3{font-size:13px;margin:2px 0 5px}
+ #settingsModal .profile-preview{width:54px;height:54px;margin:3px auto}
+ #settingsModal .avatar-picker{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:5px auto;max-width:300px}
+ #settingsModal .avatar-choice{font-size:19px;border-radius:8px}
+ #settingsModal label.muted{font-size:10px}
+ #settingsModal input:not([type=checkbox]),#settingsModal select{padding:7px 9px;margin:2px 0 4px;font-size:12px}
+ #settingsModal .settings-section input[type=color]{height:30px}
+ #settingsModal .setting-check{font-size:11px;margin:5px 0}
+ #settingsModal .settings-section>button{padding:8px;margin:4px 0;font-size:12px}
+ #settingsStatus{font-size:10px;margin:4px 0}
+}
+@media(max-height:700px) and (max-width:650px){
+ #view-home .home-hero{padding:7px 10px}
+ #view-home .home-clock{font-size:32px;margin:4px 0 2px}
+ #view-home .home-person img{width:36px;height:36px}
+ #view-home>.panel{padding:6px 8px}
+ .game-tile{min-height:88px}
+ #settingsModal .profile-preview{width:42px;height:42px}
+ #settingsModal .avatar-choice{font-size:16px}
+}
+
+/* Shared memories: an editorial keepsake book */
+.memories-panel{display:flex;flex-direction:column;gap:14px;min-height:0}
+.memories-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.memory-heading-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}.memory-close{width:auto;min-width:0;margin:0;padding:7px 9px;border:1px solid #8c795d;background:#2a2a39;color:#e9d8b8;border-radius:9px;font-size:10px;letter-spacing:.3px;white-space:nowrap}.watch-panel{display:flex;flex-direction:column;gap:12px}.watch-hero{padding:22px;border-radius:16px;background:radial-gradient(circle at 80% 10%,#55458c 0,#222b49 42%,#151d32 100%);border:1px solid #3b4770}.watch-hero h2{margin:4px 0 6px}.watch-input-row{display:flex;gap:9px}.watch-input-row input{flex:1;min-width:0;margin:0}.watch-input-row button{width:auto;min-width:150px;margin:0}.watch-player{width:100%;aspect-ratio:16/9;max-height:65vh;background:#050914;border:1px solid var(--line);border-radius:15px;overflow:hidden;display:grid;place-items:center}.watch-player iframe,.watch-player video{width:100%;height:100%;border:0;object-fit:contain}.watch-player-empty{color:var(--muted);text-align:center;padding:24px}.watch-invite-actions{display:flex;gap:10px}.watch-invite-actions button{flex:1}.watch-small{font-size:11px;color:var(--muted);line-height:1.5}.eyebrow{font-size:9px;letter-spacing:2.6px;color:#c1b6ff;font-weight:800}.memories-heading h2{font-size:25px;margin:3px 0}.memories-heading h2 span{color:#c7baff}.memories-heading p{margin:0;font-size:12px}
+.memory-add{display:flex;align-items:center;justify-content:center;gap:6px;width:auto;min-width:104px;padding:10px 13px;border-radius:12px;background:var(--accent);color:white;font-weight:750;cursor:pointer;font-size:13px}
+.memory-book-wrap{position:relative;display:grid;place-items:center;min-height:260px;flex:1;perspective:1400px;overflow:hidden;border-radius:18px;background:radial-gradient(ellipse at 50% 40%,#354064 0,#19233b 54%,#10182a 100%);border:1px solid #34415f;padding:16px}
+.memory-book-cover{position:relative;width:min(100%,350px);height:100%;min-height:245px;max-height:440px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;border:1px solid #d8c59a;border-radius:5px 15px 15px 5px;background:linear-gradient(115deg,#5b493d 0%,#80664e 4%,#302a36 5%,#28283a 100%);box-shadow:12px 18px 30px #0008,inset 5px 0 10px #d4b78a33,inset -2px 0 12px #0008;color:#f5e8cb;padding:26px 20px}
+.memory-book-cover:before{content:"";position:absolute;inset:12px;border:1px solid #c7ad7d88;border-radius:3px 10px 10px 3px;pointer-events:none}.memory-book-cover:after{content:"";position:absolute;left:22px;top:0;bottom:0;width:1px;background:#e6d2aa55;box-shadow:3px 0 8px #0006}.cover-spark{font-size:25px;color:#e4c994;margin-bottom:12px}.cover-kicker{font-size:8px;letter-spacing:3px;color:#d5c29e}.cover-title{font-family:Georgia,serif;font-size:clamp(38px,7vw,58px);line-height:.95;margin:16px 0 13px;text-shadow:0 3px 9px #0008}.cover-title em{font-weight:400;color:#e6cda0}.cover-rule{width:65px;height:1px;background:#d5bd91;margin:0 0 13px}.cover-subtitle{font-family:Georgia,serif;font-style:italic;font-size:13px;line-height:1.6;color:#e4d5ba}.cover-open{width:auto;margin:20px 0 0;padding:9px 17px;background:#d7bd8e;color:#292433;border-radius:20px;font-size:11px}.cover-open span{padding-left:8px}.cover-bottom{position:absolute;bottom:25px;font-size:7px;letter-spacing:2px;color:#cbb68f}
+.memory-page{position:relative;width:min(100%,590px);height:100%;min-height:245px;max-height:440px;display:grid;grid-template-columns:1fr 1fr;background:#eee4d1;color:#342e2a;border-radius:5px 12px 12px 5px;box-shadow:10px 15px 28px #0008;overflow:hidden;animation:pageReveal .42s ease both}
+.memory-page:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:18px;transform:translateX(-50%);background:linear-gradient(90deg,#0002,#fff7 45%,#0002);z-index:2;pointer-events:none}
+.memory-page-photo{min-width:0;min-height:0;padding:13px 10px 13px 15px;display:flex;align-items:center;justify-content:center;background:#e7dcc8}.memory-page-photo img{width:100%;height:100%;max-height:100%;object-fit:contain;box-shadow:0 3px 12px #33271d35;background:#d8cdbb}.memory-page-note{padding:18px 17px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-width:0}.memory-page-number{font-size:8px;letter-spacing:2px;color:#907b62}.memory-page-date{font-family:Georgia,serif;font-size:clamp(15px,2.8vw,22px);line-height:1.25;margin:12px 0;color:#40352d}.memory-page-caption{font-family:Georgia,serif;font-style:italic;color:#86745f;font-size:12px;line-height:1.5}.memory-page-mark{margin-top:auto;color:#ad9878;font-size:17px}.memory-delete{align-self:flex-end;width:30px;height:30px;min-width:30px;margin:12px 0 0;padding:0;border:1px solid #b9a58c;border-radius:50%;background:#f7eee0;color:#8d514b;font-size:13px;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px #33271d18}.memory-delete:hover{background:#ead8c9;color:#783b36}.memory-delete:disabled{opacity:.5;cursor:wait}
+.memory-controls{display:flex;align-items:center;justify-content:space-between;gap:10px}.memory-controls button{width:44px;height:40px;margin:0;padding:0;font-size:19px}.memory-page-label{font-size:9px;letter-spacing:1.7px;text-align:center;color:var(--muted);font-weight:800}.memory-controls button:disabled{opacity:.35}.memory-empty{font-family:Georgia,serif;font-style:italic;text-align:center;color:#f0e4cc;padding:18px;font-size:15px;line-height:1.7}
+@keyframes pageReveal{from{opacity:.35;transform:rotateY(-9deg) translateX(8px)}to{opacity:1;transform:rotateY(0) translateX(0)}}
+@media(max-width:650px){.memories-panel{padding:11px!important;gap:8px!important}.memory-close{padding:6px 7px;font-size:9px}.watch-input-row{flex-direction:column}.watch-input-row button{width:100%;min-width:0}.watch-hero{padding:16px}.memories-heading h2{font-size:20px}.memories-heading p{font-size:10px}.memory-add{min-width:40px;width:40px;height:38px;padding:0;font-size:19px}.memory-add span{display:none}.memory-book-wrap{padding:9px;min-height:0}.memory-book-cover,.memory-page{min-height:0;height:100%;max-height:none}.memory-book-cover{padding:17px 12px}.cover-title{font-size:clamp(34px,10vw,48px)}.cover-bottom{bottom:17px}.memory-page-photo{padding:8px 6px 8px 9px}.memory-page-note{padding:10px 9px}.memory-page-date{font-size:clamp(12px,3.7vw,17px);margin:8px 0}.memory-page-caption{font-size:10px}.memory-page-number{font-size:7px}.memory-controls button{width:38px;height:35px}.memory-page-label{font-size:8px;letter-spacing:1px}.memories-panel #memoryStatus{font-size:10px;padding:6px 8px;margin:0;max-height:40px;overflow:auto}}
+
+
+
+/* Full-viewport workspace for Chat, Games and Memories on desktop and mobile. */
+body.focus-view{margin:0!important;padding:0!important;width:100%;height:100dvh;min-height:100dvh;overflow:hidden}
+body.focus-view>main{width:100%;max-width:none;height:100dvh;min-height:0;margin:0;padding:0;display:flex;flex-direction:column}
+body.focus-view>main>header.app-header{display:none!important}
+body.focus-view #space{display:flex;width:100%;height:100%;min-height:0;flex:1}
+body.focus-view .content{width:100%;height:100%;min-height:0;min-width:0;overflow:hidden;padding:0 0 76px}
+body.focus-view .view{height:100%;min-height:0;max-height:100%;overflow:hidden}
+body.focus-view .view.active{display:flex;flex-direction:column;gap:0}
+body.focus-view #view-chat #chatPanel{display:flex;height:100%;min-height:0;flex:1;flex-direction:column;margin:0;border-radius:0;padding:clamp(12px,2vw,24px)}
+body.focus-view #view-chat #chatPanel.hidden{display:none!important}
+body.focus-view #view-chat #messages{height:auto;min-height:0;flex:1;overflow-y:auto}
+body.focus-view #view-games{min-height:0;overflow:hidden}
+body.focus-view #view-games #gamesMenu{flex:0 0 auto;margin:0;border-radius:0}
+body.focus-view #view-games .game-screen{flex:1;min-height:0;overflow:hidden}
+body.focus-view #view-games .game-screen>.panel{height:100%;min-height:0;margin:0;border-radius:0;overflow:auto}
+body.focus-view #view-memories>.panel{display:flex;flex:1;flex-direction:column;width:100%;height:100%;min-height:0;margin:0;border-radius:0;overflow:hidden;padding:clamp(12px,2vw,24px)}
+body.focus-view #view-memories #memoryBook{flex:1;min-height:0}
+body.focus-view .sidebar{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:60}
+@media(max-width:650px){
+ body.focus-view>main{max-width:none}
+ body.focus-view .content{height:100dvh;padding:0 0 58px}
+ body.focus-view #view-chat #chatPanel{padding:10px}
+ body.focus-view #view-games #gamesMenu{padding:10px}
+ body.focus-view #view-memories>.panel{padding:10px}
+}
+
+
+/* Our Journey: full-screen story view */
+#view-journey{overflow-y:auto!important}.journey-wrap{width:min(980px,100%);margin:0 auto;padding:18px 16px 90px;display:flex;flex-direction:column;gap:14px}.journey-hero{border:1px solid #685c91;border-radius:24px;padding:clamp(20px,4vw,36px);text-align:center;background:radial-gradient(ellipse at 50% 0%,#68518e,#283452 55%,#151d32);box-shadow:0 20px 55px #0004}.journey-kicker{letter-spacing:3px;font-size:10px;color:#d3b9f4;font-weight:800}.journey-title{font-family:Georgia,serif;font-size:clamp(30px,6vw,46px);margin:9px 0;color:#fff}.journey-title span{color:#d9b9f4}.journey-hero>p{color:#c7cce0;font-size:13px}.journey-counter{margin:18px 0 0;font-size:clamp(64px,12vw,100px);font-weight:850;letter-spacing:-3px;line-height:1;color:#fff;text-shadow:0 0 32px #b89ce455}.journey-counter small{display:block;font-size:13px;font-weight:500;letter-spacing:1px;color:#e2d6f2}.journey-since{font-size:11px;color:#cbb8f0;margin-top:15px}.journey-progress-track{height:10px;border-radius:99px;background:#0c1426;margin:20px auto 8px;max-width:500px;overflow:visible;position:relative}.journey-progress{height:100%;width:0;background:linear-gradient(90deg,#a78bfa,#e9c5f5);border-radius:99px;transition:width .5s}.journey-progress-marker{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);font-size:16px;color:#f4d9ff;text-shadow:0 0 10px #d7aaff;transition:left .5s;line-height:1}.journey-year-ticks{position:absolute;inset:0;display:flex;pointer-events:none}.journey-year-tick{position:absolute;top:0;height:100%;width:1px;background:#aeb8d5aa;transform:translateX(-50%);z-index:2}.journey-year-labels{display:grid;grid-template-columns:repeat(10,1fr);max-width:500px;margin:7px auto 0;color:#b9c4dc;font-size:9px;letter-spacing:.2px;text-align:center}.journey-timeline{max-width:500px;margin:0 auto}.journey-next{font-size:12px;color:#f1e4ff}.journey-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.journey-box{border:1px solid #34415f;border-radius:18px;background:linear-gradient(145deg,#202b46,#151d32);padding:18px}.journey-box-icon{font-size:23px}.journey-box h3{margin:7px 0}.journey-box>p{font-size:12px;color:var(--muted);margin-top:0}.journey-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}.journey-calendar-cell{border-radius:9px;min-height:38px;background:#18223a;border:1px solid #33415e;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:11px;color:#c9d0e4}.journey-calendar-cell strong{font-size:13px}.journey-calendar-cell small{font-size:7px;letter-spacing:.5px}.journey-calendar-cell.active{background:#57477b;border-color:#b9a1e4;color:#fff}.journey-prompt{font-family:Georgia,serif;font-size:18px!important;line-height:1.5;color:#f1e8ff!important;margin:20px 0 15px!important}.journey-prompt-date{color:#b3bdd5;font-size:10px}.journey-milestone-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.journey-milestone{border:1px solid #33415f;border-radius:12px;padding:11px;background:#18223a;display:flex;gap:10px;align-items:center}.journey-milestone.done{border-color:#75619b;background:#30284b}.journey-milestone .emoji{font-size:22px}.journey-milestone strong{font-size:12px;display:block}.journey-milestone small{font-size:10px;color:var(--muted)}.journey-footer{text-align:center;color:#b7b6d5;font-family:Georgia,serif;font-style:italic;font-size:13px;padding:10px}.journey-footer span{color:#e3b9f3}@media(max-width:650px){#view-journey{height:100%;overflow-y:auto!important}.journey-wrap{padding:12px 10px 76px;gap:10px}.journey-grid{grid-template-columns:1fr}.journey-box{padding:14px}.journey-calendar{gap:3px}.journey-calendar-cell{min-height:33px}.journey-milestone-list{grid-template-columns:1fr 1fr}.journey-hero{padding:20px 14px}}
+
+
+.nav-unread-dot{display:none;position:absolute;top:4px;right:6px;width:9px;height:9px;border-radius:50%;background:#ff6f91;box-shadow:0 0 10px #ff6f91}.navbtn{position:relative}.msg-read{font-size:10px;color:#b9a7f4;margin-top:5px;text-align:right}.msg-read.read{color:#8bd7c7}.msg-unread-highlight{animation:msgArrival 1.15s ease-out}@keyframes msgArrival{0%{box-shadow:0 0 0 0 #b99be9}50%{box-shadow:0 0 0 5px #b99be944}100%{box-shadow:none}}
+
+.game-screen button:not(.gameBack){transition:transform .14s,box-shadow .18s}.game-screen button:not(.gameBack):hover{transform:translateY(-2px);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 45%,transparent)}.game-screen button:not(.gameBack):active{transform:scale(.97)}
+
+/* Game polish: memory card flip, match feedback, victory confetti */
+#memoryGrid button{transform-style:preserve-3d;transition:transform .24s ease,background .25s,box-shadow .25s,border-color .25s;position:relative;border:1px solid #ffffff22;border-radius:12px!important;overflow:hidden}
+#memoryGrid button.card-flip{animation:memoryFlip .32s ease-out}
+#memoryGrid button.card-match{animation:memoryMatched .65s ease-out;box-shadow:0 0 18px #4bd6a466;border-color:#54d8ad!important}
+#memoryGrid button.card-miss{animation:memoryMiss .38s ease-in-out;border-color:#ff829866!important}
+@keyframes memoryFlip{0%{transform:rotateY(0) scale(.94)}55%{transform:rotateY(90deg) scale(1.04)}100%{transform:rotateY(0) scale(1)}}
+@keyframes memoryMatched{0%,100%{transform:scale(1)}40%{transform:scale(1.13) rotate(-3deg)}70%{transform:scale(1.07) rotate(3deg)}}
+@keyframes memoryMiss{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.game-confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:120;pointer-events:none;animation:gameConfettiFall var(--fall,2.8s) linear forwards;opacity:.95}
+@keyframes gameConfettiFall{to{transform:translate3d(var(--drift,80px),110vh,0) rotate(720deg);opacity:.1}}
+.game-win-banner{animation:gameWinPop .7s cubic-bezier(.2,1.5,.5,1)}
+@keyframes gameWinPop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+
+
+/* Mobile-first memory pages and immersive Watch Together screen */
+@media(max-width:650px){
+  body.focus-view #view-memories>.panel{padding:10px 9px!important;gap:8px!important}
+  body.focus-view #view-memories .memories-heading{flex:0 0 auto;align-items:center}
+  body.focus-view #view-memories #memoryBook{flex:1 1 0;min-height:0;padding:7px;}
+  body.focus-view #view-memories .memory-page{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;width:100%;height:100%;min-height:0;max-height:none;border-radius:10px;}
+  body.focus-view #view-memories .memory-page:before{display:none}
+  body.focus-view #view-memories .memory-page-photo{min-height:0;padding:10px 10px 4px;overflow:hidden}
+  body.focus-view #view-memories .memory-page-photo img{width:100%;height:100%;max-height:100%;object-fit:contain}
+  body.focus-view #view-memories .memory-page-note{min-height:88px;max-height:32%;padding:8px 13px 10px;overflow-y:auto;align-items:center;text-align:center}
+  body.focus-view #view-memories .memory-page-date{font-size:clamp(14px,4.2vw,19px);margin:4px 0}
+  body.focus-view #view-memories .memory-page-caption{font-size:11px;line-height:1.4}
+  body.focus-view #view-memories .memory-page-mark{display:none}
+  body.focus-view #view-memories .memory-delete{position:absolute;right:9px;bottom:8px;margin:0;width:28px;height:28px;min-width:28px}
+  body.focus-view #view-memories .memory-book-cover{width:min(100%,330px);min-height:0;height:100%;max-height:none}
+}
+body.focus-view #view-watch{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+body.focus-view #view-watch>.watch-panel{display:flex;flex:1;flex-direction:column;gap:0;width:100%;height:100%;min-height:0;margin:0;padding:8px;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:#050914}
+body.focus-view #view-watch .watch-topbar{display:flex;flex:0 0 auto;align-items:center;gap:7px;padding:2px 0 7px}
+body.focus-view #view-watch .watch-topbar input{flex:1;min-width:0;margin:0;padding:10px 11px;font-size:13px}
+body.focus-view #view-watch .watch-topbar button{width:auto;min-width:70px;margin:0;padding:10px 12px;font-size:12px;white-space:nowrap}
+body.focus-view #view-watch .watch-topbar #stopWatching{min-width:40px;width:40px;padding:9px}
+body.focus-view #view-watch .watch-status{flex:0 0 auto;margin:0;padding:3px 4px 7px;background:transparent;font-size:10px;line-height:1.25;color:var(--muted)}
+body.focus-view #view-watch .watch-player{flex:1 1 0;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;border:0;border-radius:8px;background:#000}
+body.focus-view #view-watch .watch-player iframe,body.focus-view #view-watch .watch-player video{width:100%;height:100%;object-fit:contain}
+body.focus-view #view-watch .watch-player-empty{font-size:14px}
+body.focus-view #view-watch .watch-small,body.focus-view #view-watch .watch-hero{display:none!important}
+body.focus-view #view-watch .watch-input-row{flex-direction:row}
+body.focus-view #view-watch .watch-topbar button{width:auto}
+/* Keep the bottom navigation visible in every section, including immersive views. */
+body.focus-view .sidebar{
+  display:block!important;
+  position:fixed!important;
+  left:50%!important;
+  bottom:max(8px,env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%)!important;
+  width:min(620px,calc(100% - 20px))!important;
+  z-index:200!important;
+}
+body.focus-view .content{padding:0 0 82px!important}
+@media(max-width:650px){
+  body.focus-view .content{padding:0 0 calc(76px + env(safe-area-inset-bottom))!important}
+  body.focus-view .sidebar{bottom:max(6px,env(safe-area-inset-bottom))!important}
+}
+
+
+/* Memories: show one complete page per screen, never a two-page spread. */
+#view-memories .memory-page{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr) auto!important;
+  width:min(100%,720px)!important;
+  height:100%!important;
+  max-height:none!important;
+  min-height:0!important;
+  margin:0 auto!important;
+  border-radius:12px!important;
+}
+#view-memories .memory-page:before{display:none!important}
+#view-memories .memory-page-photo{
+  min-height:0!important;
+  padding:12px 12px 5px!important;
+  overflow:hidden!important;
+}
+#view-memories .memory-page-photo img{
+  width:100%!important;
+  height:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+}
+#view-memories .memory-page-note{
+  min-height:84px!important;
+  max-height:30%!important;
+  padding:10px 16px 12px!important;
+  align-items:center!important;
+  text-align:center!important;
+  overflow-y:auto!important;
+}
+#view-memories .memory-page-mark{display:none!important}
+#view-memories .memory-delete{
+  position:absolute!important;
+  right:10px!important;
+  bottom:9px!important;
+  margin:0!important;
+}
+@media(max-width:650px){
+  body.focus-view #view-memories #memoryBook{padding:6px!important}
+  body.focus-view #view-memories .memory-page{width:100%!important}
+  body.focus-view #view-memories .memory-page-photo{padding:8px 8px 4px!important}
+  body.focus-view #view-memories .memory-page-note{min-height:78px!important;padding:8px 12px 10px!important}
+}
+
+
+/* Fix: the Watch view must stay hidden unless it is the active section.
+   The focus-view layout must not force it open over other sections. */
+body.focus-view #view-watch:not(.active){display:none!important;}
+body.focus-view #view-watch.active{display:flex!important;flex-direction:column;min-height:0;overflow:hidden;}
+</style>
+
+<link rel="manifest" href="./manifest.json">
+
+</head>
+<body>
+<main>
+<header class="app-header"><div><h1>DuoSpace <span style="color:var(--accent)">✦</span></h1><p>Your private space for two.</p></div><button id="openSettings" class="secondary settings-trigger hidden" aria-label="Open settings" title="Settings">⚙</button></header>
+<section id="auth" class="panel">
+<h2>Welcome</h2><p class="muted">Sign in to your private space using your email and password.</p>
+<div class="auth-fields">
+<label class="muted" for="authEmail">Gmail / Email</label><input id="authEmail" type="email" autocomplete="email" placeholder="you@gmail.com" required>
+<label class="muted" for="authPassword">Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Your password" required minlength="6">
+</div>
+<div class="auth-actions"><button id="emailSignin" type="button">Sign in</button><button id="emailSignup" class="secondary" type="button">Create account</button></div>
+<div id="authStatus" class="status" aria-live="polite">Enter your email and password to continue, or create a new account.</div>
+</section>
+<section id="space" class="hidden">
+<div id="settingsModal" class="game-invite hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"><div class="game-invite-card"><div class="topline"><h2 id="settingsTitle">Settings ⚙</h2><button id="closeSettings" class="secondary" style="width:auto">✕</button></div><div class="settings-section"><h3>Personal settings</h3>
+<div style="text-align:center"><img id="profilePreview" class="profile-preview" alt="Selected avatar"><p class="muted">Choose your avatar</p><div id="avatarPicker" class="avatar-picker" role="group" aria-label="Choose an avatar"></div></div>
+<label for="settingsUsername" class="muted">Display username</label><input id="settingsUsername" maxlength="24" placeholder="Your username">
+<label for="personalTheme" class="muted">Appearance</label><select id="personalTheme"><option value="dark">Dark mode</option><option value="light">Light mode</option></select>
+<label for="personalAccent" class="muted">Personal accent color</label><input id="personalAccent" type="color" value="#8b7cff">
+<label class="setting-check"><input id="notificationsEnabled" type="checkbox" checked> Enable in-app notifications</label>
+<label class="setting-check"><input id="backgroundMusicEnabled" type="checkbox" checked> تشغيل موسيقى هادئة في الخلفية</label>
+<label for="musicVolume" class="muted">Music volume</label><input id="musicVolume" type="range" min="0" max="100" value="22">
+<label for="gameVolume" class="muted">Game sound effects</label><input id="gameVolume" type="range" min="0" max="100" value="70">
+<button id="saveSettings">Save personal settings</button></div>
+<p id="settingsStatus" class="muted" aria-live="polite"></p></div></div>
+<aside class="sidebar"><nav>
+<button class="navbtn active" data-view="home">⌂ <span>Home</span></button><button class="navbtn" data-view="chat">◉ <span>Chat</span><i class="nav-unread-dot" id="chatUnreadDot"></i></button><button class="navbtn" data-view="games">♟ <span>Games</span></button><button class="navbtn" data-view="memories">▧ <span>Memories</span></button><button class="navbtn" data-view="journey">✦ <span>Journey</span></button><button class="navbtn" data-view="watch">▶ <span>Watch</span></button></nav></aside>
+<div class="content"><section class="view active" id="view-home"><div class="home-hero"><div class="topline"><div><div class="profile-inline"><img id="homeAvatar" class="profile-avatar" alt="Profile"><strong id="who">Signed in</strong></div></div><button id="logout" class="secondary">Sign out</button></div><div id="clock" class="home-clock">00:00</div><div id="homeDate" class="home-date"></div><p class="muted">Your private space for two. ✦</p><div class="home-connection"><div class="home-person"><img id="homeAvatarLeft" alt="You"><strong id="homeNameLeft">You</strong><small id="homeOwnStatus">🟢 Free</small></div><div id="homeRope" class="home-rope broken"></div><div class="home-person"><img id="homeAvatarRight" alt="Partner"><strong id="homeNameRight">Partner</strong><small id="homePartnerStatus">—</small></div></div><div id="homeConnectionNote" class="home-presence-note">Create or join your permanent Duo to connect.</div><button class="secondary hidden" id="leaveRoom" type="button">↪ Leave Duo</button></div>
+<div class="panel"><h3>Your status</h3><p class="muted">Let your partner know how you feel right now.</p><div class="availability"><button data-availability="available">🟢 Free</button><button data-availability="busy">🔴 Busy</button><button data-availability="sleeping">🌙 Sleeping</button></div></div>
+<div class="panel home-room-panel"><h3>Your permanent Duo</h3><div class="room-code-row"><div class="muted" id="roomInfo">No Duo connected</div><button id="copyRoomCode" class="secondary hidden">Copy code</button></div>
+<div class="grid"><button id="createRoom">Create your Duo</button><div><input id="invite" placeholder="Invitation code" style="margin-top:6px"><button id="joinRoom" class="secondary">Join Duo</button></div></div>
+<div id="roomStatus" class="status">Create your Duo or enter an invitation code.</div></div></section>
+<section class="view" id="view-chat">
+<div id="chatPanel" class="panel hidden">
+<h3>Messages</h3><div id="chatPartnerName" class="muted">Duo partner</div>
+<div id="partnerStatus" class="muted" style="font-size:13px;margin:8px 0 12px">
+  Join your Duo to see your partner's status.
+</div>
+<div id="typingStatus" class="muted hidden" style="font-size:13px;margin:-4px 0 10px">
+  يكتب الآن…
+</div>
+<div id="messages" aria-live="polite"></div>
+<div class="chat-compose"><input id="message" placeholder="Write a message…" maxlength="4000" autocomplete="off"><button id="send" type="button" aria-label="Send message" title="Send">➤</button></div>
+<div class="muted" style="font-size:12px;margin-top:8px">Messages are saved in your Supabase project. Keep your invitation code private.</div>
+</div></section>
+<section class="view" id="view-games"><div id="gamesMenu" class="panel"><h2>Games ✦</h2><p class="muted">Choose a game to play together</p><div class="game-menu-grid"><button class="game-tile" data-game="memory"><span>🃏</span><strong>Memory Match</strong><small>4 × 5 cards</small></button><button class="game-tile" data-game="quiz"><span>🧠</span><strong>Trivia Quiz</strong><small>Race to answer</small></button><button class="game-tile" data-game="word"><span>💞</span><strong>Same Word</strong><small>Guess together</small></button></div></div>
+<div id="gameInviteModal" class="game-invite hidden" role="dialog" aria-modal="true" aria-labelledby="gameInviteTitle"><div class="game-invite-card"><h2 id="gameInviteTitle">Game invitation ✦</h2><p id="gameInviteText" class="muted">Your partner invited you to play.</p><div class="game-invite-actions"><button id="acceptGameInvite">Accept</button><button id="declineGameInvite" class="secondary">Decline</button></div></div></div><div id="gameInviteNotice" class="status hidden" aria-live="polite"></div>
+<div class="game-screen hidden" id="game-memory"><div class="panel"><button class="secondary gameBack">← All Games</button><h2>Memory Match (4×5)</h2><div id="memoryGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px"></div><button id="resetMemory" class="secondary">Reset cards</button><p id="memoryScore" class="muted">Pairs: 0 / 10</p><p id="memoryResult" class="status" aria-live="polite"></p></div></div>
+<div class="game-screen hidden" id="game-quiz"><div class="panel"><button class="secondary gameBack">← All Games</button><h2>Trivia Quiz · 100 Questions</h2><p class="muted">🟢 Easy (1–35) · 🟡 Medium (36–70) · 🔴 Hard (71–100)</p><div id="quizScore" class="quiz-scoreboard" aria-live="polite"></div><p id="quizQuestion">Join your Duo to start.</p><div id="quizOptions"></div><p id="quizFeedback" class="muted"></p><button id="nextQuiz" class="secondary">Next question</button></div></div>
+
+<div class="game-screen hidden" id="game-word"><div class="panel word-game-panel"><button class="secondary gameBack">← All Games</button><h2>Guess the same word 🤍</h2><p class="muted">كل واحد يكتب كلمة، ومنين تسيفطو بجوج غادي تبانو هنا فخانتين واضحين.</p><div class="word-reveal-grid"><div class="word-reveal-card" id="wordRevealMy"><span class="word-reveal-label">Your word · كلمتك</span><strong id="myWordDisplay">—</strong></div><div class="word-reveal-card" id="wordRevealPartner"><span class="word-reveal-label">Partner's word · كلمة الشريك</span><strong id="partnerWordDisplay">—</strong></div></div><div class="row word-entry-row"><input id="secretWord" maxlength="30" placeholder="اكتب كلمتك هنا" autocomplete="off"><button id="submitWord" type="button">Submit</button></div><p id="wordStatus" class="status" aria-live="polite">تسناو حتى يسيفطو بجوج باش تبان الكلمات.</p></div></div></section>
+<section class="view" id="view-memories"><div class="panel memories-panel">
+<div class="memories-heading"><div><div class="eyebrow">A LITTLE BOOK OF US</div><h2>Our Memories <span>✦</span></h2><p class="muted">Every picture keeps a moment alive.</p></div><div class="memory-heading-actions"><button id="closeMemoryBook" class="memory-close" type="button">Close Your Book</button><label class="memory-add" for="memoryUpload" title="Add photos">＋ <span>Add photos</span></label></div><input id="memoryUpload" type="file" accept="image/*" multiple hidden></div>
+<div id="memoryBook" class="memory-book-wrap"><div class="memory-book-cover"><div class="cover-spark">✦</div><div class="cover-kicker">DUOSPACE · PRIVATE EDITION</div><div class="cover-title">Our<br><em>Memories</em></div><div class="cover-rule"></div><div class="cover-subtitle">A collection of moments<br>made together</div><button id="openMemoryBook" class="cover-open">Open our book <span>→</span></button><div class="cover-bottom">EST. TOGETHER · ALWAYS</div></div></div>
+<div class="memory-controls"><button id="memoryPrev" class="secondary" disabled aria-label="Previous page">←</button><div id="memoryPageLabel" class="memory-page-label">THE FIRST PAGE · 0 PHOTOS</div><button id="memoryNext" disabled aria-label="Next page">→</button></div>
+<div id="memoryStatus" class="status">Join your shared Duo to open your memory book.</div>
+</div></section>
+<section class="view" id="view-journey"><div class="journey-wrap">
+<div class="journey-hero"><div class="journey-kicker">TWO HEARTS · ONE STORY</div><div class="journey-title">Our Journey <span>✦</span></div><p>Every day is another page of the story you are writing together.</p><div id="journeyLocked" class="status hidden">You are not currently linked. Connect your Duo to view Our Journey.</div><div id="journeySharedContent"><div class="journey-counter"><span id="journeyDays">256</span><small>days together</small></div><button id="editJourneyDays" class="secondary" style="width:auto;margin:12px auto">✎ Edit days</button><div class="journey-since">Since March 16, 2026 · still choosing each other</div><div class="journey-timeline"><div class="journey-progress-track"><div id="journeyProgress" class="journey-progress"></div><span id="journeyProgressMarker" class="journey-progress-marker" title="Progress marker">✦</span><div class="journey-year-ticks"><span style="left:10%" class="journey-year-tick"></span><span style="left:20%" class="journey-year-tick"></span><span style="left:30%" class="journey-year-tick"></span><span style="left:40%" class="journey-year-tick"></span><span style="left:50%" class="journey-year-tick"></span><span style="left:60%" class="journey-year-tick"></span><span style="left:70%" class="journey-year-tick"></span><span style="left:80%" class="journey-year-tick"></span><span style="left:90%" class="journey-year-tick"></span><span style="left:100%" class="journey-year-tick"></span></div></div><div class="journey-year-labels"><span>1Y</span><span>2Y</span><span>3Y</span><span>4Y</span><span>5Y</span><span>6Y</span><span>7Y</span><span>8Y</span><span>9Y</span><span>10Y</span></div></div><div id="journeyNext" class="journey-next">Our next milestone is waiting…</div></div>
+
+<div class="journey-box journey-milestones"><div class="journey-box-icon">🏁</div><h3>Milestones</h3><p>Little landmarks along the way.</p><div id="journeyMilestones" class="journey-milestone-list"></div></div>
+<div class="journey-footer">Made of ordinary days, extraordinary memories. <span>♡</span></div></div></div></section>
+<section class="view" id="view-watch"><div class="panel watch-panel">
+  <div class="watch-topbar"><input id="watchUrl" type="url" placeholder="Paste a video link…" autocomplete="url"><button id="startWatching" type="button">▶ Start</button><button id="stopWatching" class="secondary hidden" type="button" aria-label="Stop watching">✕</button></div>
+  <p id="watchStatus" class="watch-status" aria-live="polite">Paste a video link, then invite your partner.</p>
+  <div id="watchPlayer" class="watch-player"><div class="watch-player-empty">🎬<br> Your shared screen will appear here.</div></div>
+</div></section></div>
+<div id="watchInviteModal" class="game-invite hidden" role="dialog" aria-modal="true" aria-labelledby="watchInviteTitle"><div class="game-invite-card"><h2 id="watchInviteTitle">🎬 Watch Together?</h2><p id="watchInviteText" class="muted">Your partner invited you to watch a video.</p><div class="watch-invite-actions"><button id="acceptWatchInvite">Accept & Watch</button><button id="declineWatchInvite" class="secondary">Decline</button></div></div></div>
+</section>
+</main>
+<script>
+(() => {
+  const SUPABASE_URL = "https://lddruecgndetbmjtgpqv.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_c1Lqn9nZHHKsMl4avpPq9Q_totueLhm";
+  const $ = id => document.getElementById(id);
+  function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const target=$("view-"+name);if(target)target.classList.add('active');document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===name));document.body.classList.toggle("focus-view",["chat","games","memories","journey","watch"].includes(name));syncMusicForView(name);if(name==="chat")markMessagesRead();}
+  document.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));
+
+  let journeyRow=null, journeyTimer=null;
+  function renderJourney(days){
+    const counter=$("journeyDays");if(counter)counter.textContent=days;
+    const milestoneDays=Array.from({length:10},(_,i)=>(i+1)*365);const next=milestoneDays.find(n=>n>days)||3650;const prog=Math.max(0,Math.min(100,(days/3650)*100));const bar=$("journeyProgress");if(bar)bar.style.width=prog+'%';const marker=$("journeyProgressMarker");if(marker)marker.style.left=Math.max(0,Math.min(100,prog))+'%';const nextEl=$("journeyNext");if(nextEl)nextEl.textContent=days>=next?'✨ Milestone reached!':`${next-days} days until ${Math.floor(next/365)} year${next/365===1?'':'s'} together · next milestone`;
+    const list=$("journeyMilestones");if(list){const milestoneItems=[{n:1,e:'🌱',l:'The beginning'},{n:30,e:'🌙',l:'One month'},{n:50,e:'✨',l:'50 days'},{n:100,e:'💯',l:'100 days'},{n:150,e:'🫶',l:'150 days'},{n:200,e:'💫',l:'200 days'},{n:255,e:'💜',l:'255 days'},{n:365,e:'🎂',l:'One year'},{n:730,e:'🌟',l:'Two years'},...Array.from({length:8},(_,i)=>({n:1095+i*365,e:['🌷','💎','🏆','🎉','🪄','🌈','💖','✨'][i],l:(i+3)+' years'}) )];list.innerHTML=milestoneItems.map(m=>`<div class="journey-milestone ${days>=m.n?'done':''}"><span class="emoji">✦</span><div><strong>${m.l}</strong><small>${days>=m.n?'Unlocked':m.n>=365?Math.floor(m.n/365)+' years':'Day '+m.n}</small></div></div>`).join('');}
+  }
+  function showJourneyLinked(linked){$("journeyLocked").classList.toggle("hidden",linked);$("journeySharedContent").classList.toggle("hidden",!linked);}
+  async function syncJourney(){
+    if(!currentDuo){showJourneyLinked(false);return;}
+    showJourneyLinked(true);
+    const {data,error}=await client.from("duo_journey").select("days,updated_at").eq("duo_id",currentDuo.id).maybeSingle();
+    if(error){console.warn("Journey sync failed",error);$("journeyLocked").textContent="Journey sync is not set up yet. Please run the SQL setup.";$("journeyLocked").classList.remove("hidden");$("journeySharedContent").classList.add("hidden");return;}
+    if(!data){const {data:created,error:insertError}=await client.from("duo_journey").insert({duo_id:currentDuo.id,days:256}).select().single();if(insertError){console.warn(insertError);return;}journeyRow=created;}
+    else journeyRow=data;
+    renderJourney(journeyRow.days||0);
+    if(journeyTimer)clearInterval(journeyTimer);
+    journeyTimer=setInterval(()=>{if(currentDuo&&journeyRow){const elapsed=Math.floor((Date.now()-new Date(journeyRow.updated_at).getTime())/86400000);renderJourney((journeyRow.days||0)+Math.max(0,elapsed));}},60000);
+  }
+  $("editJourneyDays").onclick=async()=>{
+    if(!currentDuo||!journeyRow)return;
+    const val=prompt("Set the shared number of days:",String(journeyRow.days));
+    if(val===null)return;
+    const n=Number(val);
+    if(!Number.isInteger(n)||n<0||n>36500){alert("Please enter a whole number between 0 and 36500.");return;}
+    const duoId=currentDuo.id;
+    const {data,error}=await client.from("duo_journey").upsert({duo_id:duoId,days:n,updated_at:new Date().toISOString()},{onConflict:"duo_id"}).select().single();
+    if(error){showError("roomStatus",error);return;}
+    if(currentDuo?.id!==duoId)return;
+    journeyRow=data;renderJourney(n);
+    // Send the committed value immediately to the other member over Broadcast.
+    if(channel){
+      const {error:broadcastError}=await channel.send({type:"broadcast",event:"journey_updated",payload:{duo_id:duoId,days:n,updated_at:data.updated_at}});
+      if(broadcastError)console.warn("Journey broadcast failed; Postgres Changes remains available as fallback.",broadcastError);
+    }
+  };
+  showJourneyLinked(false);
+
+  document.addEventListener('click',e=>{if(e.target.closest('#goChat'))switchView('chat');});
+  function updateHomeClock(){const now=new Date();const c=$("clock"),d=$("homeDate");if(c)c.textContent=now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});if(d)d.textContent=now.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"});}updateHomeClock();setInterval(updateHomeClock,1000);
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  let currentUser = null, currentDuo = null, channel = null; let displayName="Duo Member", partnerName="Partner", availabilityStatus="available";
+  let typingTimer = null;
+  let partnerTypingTimer = null;
+  let isTyping = false;
+  let submittedWord = null, partnerSubmittedWord = null;
+  let outgoingGameInvite = null, incomingGameInvite = null;
+  const personalDefaults={theme:"dark",accent:"#8b7cff",notifications:true,backgroundMusic:true,musicVolume:22,gameVolume:70};
+  const sharedDefaults={name:"Our Space",accent:"#8b7cff",wallpaper:"#0c1426"};
+  let personalSettings={...personalDefaults}, sharedSettings={...sharedDefaults};
+  // Uploaded music track; pause while Watch Together is the active view.
+  const backgroundTrack = new Audio();
+  backgroundTrack.preload="none";
+  backgroundTrack.loop=true; backgroundTrack.volume=(personalSettings.musicVolume??22)/100;
+  let musicPausedForWatch=false, musicUserInteracted=false, musicSourceLoaded=false;
+  function stopAmbientMusic(){try{backgroundTrack.pause();}catch{}}
+  function ensureBackgroundTrackSource(){
+    if(musicSourceLoaded)return;
+    backgroundTrack.src=new URL("duospace-background-music.mp3",document.baseURI).href;
+    musicSourceLoaded=true;
+  }
+  async function startAmbientMusic(){
+    if(!personalSettings.backgroundMusic||musicPausedForWatch||!musicUserInteracted)return;
+    try{ensureBackgroundTrackSource();await backgroundTrack.play();}
+    catch(err){console.info("Music playback awaits user interaction",err);}
+  }
+  function unlockBackgroundMusic(){
+    if(musicUserInteracted)return;
+    musicUserInteracted=true;
+    if(personalSettings.backgroundMusic&&!musicPausedForWatch)startAmbientMusic();
+  }
+  function syncMusicForView(name){musicPausedForWatch=(name==="watch");if(musicPausedForWatch)stopAmbientMusic();else startAmbientMusic();}
+  function syncAmbientMusic(){if(personalSettings.backgroundMusic&&!musicPausedForWatch)startAmbientMusic();else stopAmbientMusic();}
+  document.addEventListener("pointerdown",unlockBackgroundMusic,{once:true});
+  document.addEventListener("keydown",unlockBackgroundMusic,{once:true});
+  const PROFILE_AVATARS=[
+    {id:"fox",emoji:"🦊",bg:"#633d2d"},{id:"cat",emoji:"🐱",bg:"#57456f"},{id:"panda",emoji:"🐼",bg:"#34465d"},
+    {id:"bear",emoji:"🐻",bg:"#654b37"},{id:"robot",emoji:"🤖",bg:"#31566a"},{id:"alien",emoji:"👽",bg:"#35634a"},
+    {id:"astronaut",emoji:"🧑‍🚀",bg:"#39436d"},{id:"rabbit",emoji:"🐰",bg:"#75516b"},{id:"tiger",emoji:"🐯",bg:"#76502b"},
+    {id:"koala",emoji:"🐨",bg:"#53606a"},{id:"unicorn",emoji:"🦄",bg:"#684b78"},{id:"penguin",emoji:"🐧",bg:"#344b67"}
+  ];
+  let profileAvatarId="fox", partnerAvatarId=null, partnerProfile=null;
+  function avatarSrc(id){const a=PROFILE_AVATARS.find(x=>x.id===id)||PROFILE_AVATARS[0];const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" rx="60" fill="${a.bg}"/><text x="60" y="78" font-size="64" text-anchor="middle" font-family="Arial,sans-serif">${a.emoji}</text></svg>`;return "data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg);}
+  function updateAvatarUI(){const src=avatarSrc(profileAvatarId),preview=$("profilePreview"),home=$("homeAvatar");if(preview)preview.src=src;if(home)home.src=src;const left=$("homeAvatarLeft");if(left)left.src=src;document.querySelectorAll(".msg-avatar").forEach(img=>{if(img.dataset.uid===currentUser?.id)img.src=src;});document.querySelectorAll(".avatar-choice").forEach(btn=>{const selected=btn.dataset.avatar===profileAvatarId;btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected));});}
+  function renderAvatarPicker(){const picker=$("avatarPicker");if(!picker)return;picker.innerHTML="";PROFILE_AVATARS.forEach(a=>{const btn=document.createElement("button");btn.type="button";btn.className="avatar-choice";btn.dataset.avatar=a.id;btn.textContent=a.emoji;btn.title=a.id;btn.setAttribute("aria-label",a.id);btn.onclick=()=>selectProfileAvatar(a.id);picker.append(btn);});updateAvatarUI();}
+  async function selectProfileAvatar(id){if(!PROFILE_AVATARS.some(a=>a.id===id)||!currentUser)return;profileAvatarId=id;localStorage.setItem("duospace_avatar_"+currentUser.id,id);updateAvatarUI();await persistDuoProfile();await broadcastProfileAvatar();}
+  function applyPersonalSettings(){document.body.classList.toggle("light-mode",personalSettings.theme==="light");document.documentElement.style.setProperty("--accent",personalSettings.accent||personalDefaults.accent);syncAmbientMusic();}
+  function applySharedSettings(){const title=$("roomInfo");if(currentDuo&&title)title.textContent=(sharedSettings.name||"Our Space")+" · Code: "+currentDuo.invite_code;const messages=$("messages");if(messages)messages.style.background=sharedSettings.wallpaper||sharedDefaults.wallpaper;}
+  function loadPersonalSettings(){profileAvatarId=localStorage.getItem("duospace_avatar_"+currentUser.id)||"fox";renderAvatarPicker();try{personalSettings={...personalDefaults,...JSON.parse(localStorage.getItem("duospace_settings_"+currentUser.id)||"{}")} }catch{personalSettings={...personalDefaults}};$("personalTheme").value=personalSettings.theme;$("personalAccent").value=personalSettings.accent;$("notificationsEnabled").checked=!!personalSettings.notifications;$("backgroundMusicEnabled").checked=!!personalSettings.backgroundMusic;$("musicVolume").value=personalSettings.musicVolume??22;$("gameVolume").value=personalSettings.gameVolume??70;backgroundTrack.volume=(personalSettings.musicVolume??22)/100;applyPersonalSettings();}
+
+  function status(id, message, kind="") {
+    const el=$(id); el.textContent=message; el.className="status"+(kind?" "+kind:"");
+  }
+
+  function setPartnerStatus(message, online=false) {
+    const el = $("partnerStatus");
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = online ? "var(--good)" : "var(--muted)";
+  }
+
+  function renderPartnerAvatars() {
+    const fallback = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" rx="50" fill="#273452"/><text x="50" y="58" font-size="42" text-anchor="middle" fill="white" font-family="Arial">${(partnerName||"D").slice(0,1).toUpperCase()}</text></svg>`);
+    const src=partnerAvatarId?avatarSrc(partnerAvatarId):fallback;
+    document.querySelectorAll(".msg-avatar").forEach(img => { if (img.dataset.uid !== currentUser?.id) img.src = src; });
+  }
+
+  function updatePartnerPresence() {
+    if (!currentDuo || !currentUser) return;
+    const presenceEntries = channel ? Object.values(channel.presenceState()).flat() : [];
+    const partnerEntry = presenceEntries.find(entry => entry && entry.user_id && entry.user_id !== currentUser.id);
+    const saved = partnerProfile || (currentDuo.members||[]).find(member=>member.user_id!==currentUser.id) || null;
+    if (partnerEntry) {
+      partnerAvatarId = partnerEntry.avatar_id || saved?.avatar_id || partnerAvatarId || null;
+      if (partnerEntry.username) partnerName = partnerEntry.username;
+      updateHomeConnection(true,{...saved,...partnerEntry});
+      setPartnerStatus("● " + (partnerName || "الشخص الثاني") + " متصل الآن", true);
+    } else {
+      // Presence is temporary; keep the permanent member profile and avatar visible offline.
+      partnerAvatarId = saved?.avatar_id || partnerAvatarId || null;
+      partnerName = saved?.nickname || partnerName || "Partner";
+      updateHomeConnection(false,saved);
+      setPartnerStatus("○ " + partnerName + " غير متصل", false);
+    }
+    const chatName=$("chatPartnerName");if(chatName)chatName.textContent=partnerName;
+    renderPartnerAvatars();
+  }
+
+  function updateHomeConnection(connected,entry){const rope=$("homeRope"),note=$("homeConnectionNote"),right=$("homeAvatarRight"),name=$("homeNameRight");if(rope)rope.classList.remove("broken");if(right)right.src=entry?.avatar_id?avatarSrc(entry.avatar_id):(partnerAvatarId?avatarSrc(partnerAvatarId):avatarSrc("panda"));if(name)name.textContent=entry?.username||entry?.nickname||partnerName||"Partner";const ps=$("homePartnerStatus");if(ps)ps.textContent=entry?((connected?"🟢 Online · ":"⚪ Offline · ")+({available:"🟢 Free",busy:"🔴 Busy",sleeping:"🌙 Sleeping"}[entry.availability]||"🟢 Free")):"⚪ Offline";if(note)note.textContent=connected?"Your partner is online ✦":"Your Duo bond stays connected while your partner is offline.";}  function showPartnerTyping(isVisible) {
+    const el = $("typingStatus");
+    if (!el) return;
+    el.classList.toggle("hidden", !isVisible);
+  }
+
+  function clearTypingTimers() {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+    if (partnerTypingTimer) {
+      clearTimeout(partnerTypingTimer);
+      partnerTypingTimer = null;
+    }
+    isTyping = false;
+    showPartnerTyping(false);
+  }
+
+  function broadcastTyping(isTypingNow) {
+    if (!channel || !currentUser || !currentDuo) return;
+
+    channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: {
+        user_id: currentUser.id,
+        is_typing: isTypingNow
+      }
+    }).catch(error => {
+      console.warn("Typing status could not be broadcast:", error);
+    });
+  }
+
+  function stopTyping() {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+    if (isTyping) {
+      isTyping = false;
+      broadcastTyping(false);
+    }
+  }
+
+  function handleMessageInput() {
+    if (!channel || !currentDuo || !currentUser) return;
+
+    const hasText = $("message").value.trim().length > 0;
+    if (!hasText) {
+      stopTyping();
+      return;
+    }
+
+    if (!isTyping) {
+      isTyping = true;
+      broadcastTyping(true);
+    }
+
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = setTimeout(stopTyping, 1500);
+  }
+
+  async function cleanupDuoChannel() {
+    stopTyping();
+    clearTypingTimers();
+
+    const oldChannel = channel;
+    channel = null;
+
+    if (oldChannel) {
+      try {
+        await client.removeChannel(oldChannel);
+      } catch (error) {
+        console.warn("Could not clean up the previous Realtime channel:", error);
+      }
+    }
+  }
+  let authInitUserId=null;
+  async function showApp(user) {
+    currentUser=user;
+    $("auth").classList.toggle("hidden",!!user);
+    $("space").classList.toggle("hidden",!user);
+    $("openSettings").classList.toggle("hidden",!user);
+    if(!user){authInitUserId=null;await cleanupDuoChannel();currentDuo=null;$("createRoom").parentElement.classList.remove("hidden");return;}
+    if(authInitUserId===user.id)return;
+    authInitUserId=user.id;
+    displayName=localStorage.getItem("duospace_name_"+user.id)||user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split("@")[0]||"Duo Member";
+    localStorage.setItem("duospace_name_"+user.id,displayName);$("who").textContent=displayName;$("settingsUsername").value=displayName;loadPersonalSettings();
+    try{
+      const {data,error}=await client.rpc("get_my_duo");if(error)throw error;
+      if(data?.duo_id){await enterDuo({id:data.duo_id,invite_code:data.invite_code,name:"Our Space",members:data.members||[]});}
+      else{await cleanupDuoChannel();currentDuo=null;$("createRoom").parentElement.classList.remove("hidden");$("chatPanel").classList.add("hidden");$("copyRoomCode").classList.add("hidden");$("leaveRoom").classList.add("hidden");$("roomInfo").textContent="No Duo connected";status("roomStatus","Create your Duo or enter an invitation code.","ok");}
+    }catch(e){showError("roomStatus",e);}
+  }
+  function showError(id, error) {
+    console.error(error);
+    status(id, error?.message || String(error), "error");
+  }
+  async function enterDuo(duo) {
+    // Reconnect to this permanent Duo's realtime channel.
+    await cleanupDuoChannel();
+
+    currentDuo = duo;
+    try { const fresh=await client.rpc("get_my_duo"); if(!fresh.error&&fresh.data?.duo_id===duo.id) currentDuo={...duo,...fresh.data,id:fresh.data.duo_id}; } catch(e){console.warn("Could not refresh Duo profile",e);}
+    $("createRoom").parentElement.classList.add("hidden");
+    const partner=(currentDuo.members||[]).find(member=>member.user_id!==currentUser.id);
+    partnerProfile=partner||null;
+    partnerName=partner?.nickname||"Partner";
+    partnerAvatarId=partner?.avatar_id||null;
+    const ownProfile=(currentDuo.members||[]).find(member=>member.user_id===currentUser.id);
+    availabilityStatus=ownProfile?.availability||"available";
+    const ownStatus=$("homeOwnStatus");if(ownStatus)ownStatus.textContent=({available:"🟢 Free",busy:"🔴 Busy",sleeping:"🌙 Sleeping"}[availabilityStatus]||"🟢 Free");
+    document.querySelectorAll("[data-availability]").forEach(btn=>btn.classList.toggle("selected",btn.dataset.availability===availabilityStatus));
+    try{await persistDuoProfile();}catch(e){console.warn("Could not save local Duo profile",e);}
+    $("homeNameRight").textContent=partnerName;
+    renderPartnerAvatars();
+    updateHomeConnection(false,partner);
+    $("copyRoomCode").classList.remove("hidden");
+    $("leaveRoom").classList.remove("hidden");
+    submittedWord=null; partnerSubmittedWord=null;
+    clearTypingTimers();
+    showPartnerTyping(false);
+    $("roomInfo").textContent = "Duo: " + duo.name + " · Code: " + duo.invite_code;
+
+    $("chatPanel").classList.remove("hidden");
+    setPartnerStatus("جارٍ التحقق من حالة الشخص الثاني...", false);
+    status("roomStatus", "Connected to Duo. Loading messages…", "ok");
+
+    // Load non-critical sections in the background so the realtime channel
+    // and chat become available without waiting for every memory caption/Journey request.
+    loadMemoryBook().catch(error=>console.warn("Memory preload failed:",error));
+    syncJourney().catch(error=>console.warn("Journey preload failed:",error));
+    await loadMessages();
+
+    const duoChannel = client.channel("duo-" + duo.id, {
+      config: {
+        presence: {
+          key: currentUser.id
+        }
+      }
+    });
+
+    duoChannel.on("broadcast", {event:"watch_request"}, ({payload})=>{
+      if(channel!==duoChannel||!payload||payload.user_id===currentUser.id||!payload.url)return;
+      incomingWatchInvite=payload;$("watchInviteText").textContent=(payload.username||"Your partner")+" wants to watch a video with you. Join now?";$("watchInviteModal").classList.remove("hidden");
+    });
+    duoChannel.on("broadcast", {event:"watch_response"}, ({payload})=>{
+      if(channel!==duoChannel||!payload||payload.user_id===currentUser.id||!outgoingWatchInvite||payload.invite_id!==outgoingWatchInvite.invite_id)return;
+      const invite=outgoingWatchInvite;outgoingWatchInvite=null;
+      if(payload.accepted){openWatchSession(invite.url);}
+      else status("watchStatus","Your partner declined the invitation.");
+    });
+
+    duoChannel.on("broadcast", { event: "profile_avatar" }, (message) => {
+      const payload = message?.payload || message;
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id) return;
+      partnerAvatarId = payload.avatar_id || partnerAvatarId;
+      if (payload.username) partnerName = payload.username;
+      partnerProfile={...(partnerProfile||{}),nickname:partnerName,avatar_id:partnerAvatarId};
+      renderPartnerAvatars();
+      updateHomeConnection(true,{...partnerProfile,username:partnerName});
+      const nameEl = $("chatPartnerName");
+      if (nameEl && partnerName) nameEl.textContent = "Chatting with " + partnerName;
+    });
+    // Journey instant-sync fallback: broadcast updates over the already-subscribed
+    // private Duo channel, so the partner receives edits even if duo_journey is
+    // not enabled in Supabase's postgres_changes publication.
+    duoChannel.on("broadcast", {event:"journey_updated"}, ({payload})=>{
+      if(channel!==duoChannel||currentDuo?.id!==duo.id||!payload||payload.duo_id!==duo.id)return;
+      journeyRow={...(journeyRow||{}),days:payload.days,updated_at:payload.updated_at||new Date().toISOString()};
+      renderJourney(Number(payload.days)||0);
+      if(journeyTimer)clearInterval(journeyTimer);
+      journeyTimer=setInterval(()=>{if(currentDuo?.id===duo.id&&journeyRow){const elapsed=Math.floor((Date.now()-new Date(journeyRow.updated_at).getTime())/86400000);renderJourney((journeyRow.days||0)+Math.max(0,elapsed));}},60000);
+    });
+    duoChannel.on("postgres_changes",{event:"*",schema:"public",table:"duo_journey",filter:"duo_id=eq."+duo.id},payload=>{if(channel===duoChannel&&currentDuo?.id===duo.id&&payload.new){journeyRow=payload.new;renderJourney(payload.new.days||0);}});
+    // Fast message delivery fallback: broadcast the saved database row to the
+    // other member. This works even if Postgres Changes is not enabled for the table.
+    duoChannel.on("broadcast", { event: "new_message" }, ({ payload }) => {
+      if (channel !== duoChannel || currentDuo?.id !== duo.id || !payload?.message) return;
+      const message = payload.message;
+      if (message.user_id === currentUser.id) return;
+      renderMessage(message);
+      if ($("view-chat")?.classList.contains("active")) {
+        markMessagesRead();
+      } else {
+        unreadIncoming++;
+        setUnreadDot(true);
+        const el = $("messages").querySelector('[data-id="' + message.id + '"]');
+        if (el) el.classList.add("msg-unread-highlight");
+      }
+    });
+
+    // Instant read receipts and deletion notices are also broadcast directly.
+    // This complements Postgres Changes, which may be delayed or unavailable
+    // when the table is not enabled for realtime replication.
+    duoChannel.on("broadcast", { event: "messages_read" }, ({ payload }) => {
+      if (channel !== duoChannel || currentDuo?.id !== duo.id || !payload || payload.user_id === currentUser.id) return;
+      document.querySelectorAll('#messages .msg').forEach(div => {
+        if (div.dataset.userId === currentUser.id) {
+          setMessageReadLabel(div, { user_id: currentUser.id, read_at: payload.read_at || new Date().toISOString() });
+        }
+      });
+    });
+    duoChannel.on("broadcast", { event: "message_deleted" }, ({ payload }) => {
+      if (channel !== duoChannel || currentDuo?.id !== duo.id || !payload || payload.user_id === currentUser.id || !payload.id) return;
+      const div = $('messages').querySelector('[data-id="' + payload.id + '"]');
+      if (!div) return;
+      const body = div.querySelector('.msg-body');
+      if (body) body.textContent = 'تم حذف الرسالة';
+      div.classList.add('deleted');
+      div.querySelector('.msg-tools')?.remove();
+    });
+
+    // Keep the existing message listener and database-backed message flow.
+    duoChannel.on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "duo_messages",
+        filter: "duo_id=eq." + duo.id
+      },
+      payload => {
+        if (channel === duoChannel && currentDuo?.id === duo.id) {
+          renderMessage(payload.new);
+          if(payload.new.user_id!==currentUser.id){if($("view-chat")?.classList.contains("active")){markMessagesRead();}else{unreadIncoming++;setUnreadDot(true);const el=$("messages").querySelector('[data-id="'+payload.new.id+'"]');if(el)el.classList.add("msg-unread-highlight");}}
+        }
+      }
+    );
+    duoChannel.on("postgres_changes", {event:"UPDATE",schema:"public",table:"duo_messages",filter:"duo_id=eq."+duo.id}, payload=>{if(channel===duoChannel&&currentDuo?.id===duo.id)renderMessage(payload.new);});
+
+    // Receive temporary typing notifications from the other Duo member.
+    duoChannel.on("broadcast", { event: "typing" }, ({ payload }) => {
+      if (
+        channel !== duoChannel ||
+        !payload ||
+        !payload.user_id ||
+        payload.user_id === currentUser.id
+      ) return;
+
+      if (partnerTypingTimer) {
+        clearTimeout(partnerTypingTimer);
+        partnerTypingTimer = null;
+      }
+
+      if (payload.is_typing) {
+        showPartnerTyping(true);
+        // Hide the indicator if a stop event is missed.
+        partnerTypingTimer = setTimeout(() => {
+          showPartnerTyping(false);
+          partnerTypingTimer = null;
+        }, 3000);
+      } else {
+        showPartnerTyping(false);
+      }
+    });
+
+    // Game invitations: the selected game opens only after the partner accepts.
+    duoChannel.on("broadcast", { event: "game_invite" }, ({ payload }) => {
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id) return;
+      incomingGameInvite = payload;
+      const label = ({memory:"Memory Match",quiz:"Trivia Quiz",word:"Same Word"})[payload.game] || "a game";
+      $("gameInviteText").textContent = (payload.username || "Your partner") + " invited you to play " + label + ".";
+      $("gameInviteModal").classList.remove("hidden");
+      switchView("games");
+    });
+    duoChannel.on("broadcast", { event: "game_invite_response" }, async ({ payload }) => {
+      if (channel !== duoChannel || !payload || !outgoingGameInvite || payload.invite_id !== outgoingGameInvite.invite_id) return;
+      if (payload.accepted) {
+        const game = outgoingGameInvite.game;
+        const inviteId = outgoingGameInvite.invite_id;
+        outgoingGameInvite = null;
+        await duoChannel.send({type:"broadcast",event:"game_start",payload:{user_id:currentUser.id,invite_id:inviteId,game}});
+        launchInvitedGame(game);
+        $("gameInviteNotice").textContent = "Your partner accepted. Game started!";
+        $("gameInviteNotice").classList.remove("hidden");
+      } else {
+        outgoingGameInvite = null;
+        $("gameInviteNotice").textContent = (payload.username || "Your partner") + " declined the invitation.";
+        $("gameInviteNotice").classList.remove("hidden");
+      }
+    });
+    duoChannel.on("broadcast", { event: "game_start" }, ({ payload }) => {
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id) return;
+      launchInvitedGame(payload.game);
+      $("gameInviteModal").classList.add("hidden");
+      incomingGameInvite = null;
+      $("gameInviteNotice").textContent = "Your partner accepted. Game started!";
+      $("gameInviteNotice").classList.remove("hidden");
+    });
+
+    duoChannel.on("broadcast", { event: "duo_game_exit" }, ({ payload }) => {
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id) return;
+      showGamesMenu();
+      $("gameInviteNotice").textContent = (payload.username || "Your partner") + " left the game. The game has ended for both of you.";
+      $("gameInviteNotice").classList.remove("hidden");
+    });
+    duoChannel.on("broadcast", { event: "duo_game" }, ({ payload }) => {
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id) return;
+      if (payload.kind === "quiz") { qi=Number.isInteger(payload.qi)?payload.qi:qi; quizScores=payload.scores||quizScores; quizAnswered=[]; quizLocked=true; renderQuiz(); setTimeout(()=>{quizLocked=false;renderQuiz();},650); }
+      if (payload.kind === "memory") { deck=payload.deck||deck; flipped=payload.flipped||[]; matchedCards=payload.matched||matchedCards; pairs=payload.pairs||0; memoryTurn=payload.turn||null; memoryScores=payload.scores||memoryScores; memoryBusy=false; renderCards(); }
+    });
+    // Receive the partner's word for the current round. Reveal only after both submit.
+    duoChannel.on("broadcast", { event: "word_match" }, ({ payload }) => {
+      if (channel !== duoChannel || !payload || payload.user_id === currentUser.id || typeof payload.word !== "string" || !payload.round_id) return;
+      if (wordRoundId !== payload.round_id) {
+        wordRoundId = payload.round_id;
+        submittedWord = null;
+        partnerSubmittedWord = null;
+        $("myWordDisplay").textContent = "—";
+        $("partnerWordDisplay").textContent = "—";
+        $("wordStatus").textContent = "وصلات كلمة الشريك؛ تسنّى حتى تسيفط كلمتك.";
+        $("wordRevealMy").classList.remove("is-match","is-different");
+        $("wordRevealPartner").classList.remove("is-match","is-different");
+      }
+      partnerSubmittedWord = payload.word.trim().toLocaleLowerCase();
+      evaluateWordMatch();
+    });
+
+    duoChannel.on("broadcast", {event:"memory_added"}, ({payload})=>{
+      if(channel!==duoChannel||!payload||payload.user_id===currentUser.id)return;
+      if(currentDuo?.id===duo.id)loadMemoryBook();
+    });
+    duoChannel.on("broadcast", {event:"memory_deleted"}, ({payload})=>{
+      if(channel!==duoChannel||!payload||payload.user_id===currentUser.id)return;
+      if(currentDuo?.id===duo.id)loadMemoryBook();
+    });
+
+    duoChannel.on("postgres_changes", {event:"*",schema:"public",table:"duo_settings",filter:"duo_id=eq."+duo.id}, ({new:row})=>{
+      if(channel!==duoChannel||currentDuo?.id!==duo.id||!row)return;
+      sharedSettings={...sharedDefaults,...row};
+      $("sharedName").value=sharedSettings.name;$("sharedAccent").value=sharedSettings.accent;$("sharedWallpaper").value=sharedSettings.wallpaper;applySharedSettings();
+      if(personalSettings.notifications)$("settingsStatus").textContent="Your partner updated shared space settings.";
+    });
+
+    // Recalculate partner status whenever Presence changes.
+    duoChannel
+      .on("presence", { event: "sync" }, () => {
+        if (channel === duoChannel) updatePartnerPresence();
+      })
+      .on("presence", { event: "join" }, () => {
+        if (channel === duoChannel) updatePartnerPresence();
+      })
+      .on("presence", { event: "leave" }, () => {
+        if (channel === duoChannel) updatePartnerPresence();
+      });
+
+    channel = duoChannel;
+
+    duoChannel.subscribe(async state => {
+      if (channel !== duoChannel) return;
+
+      if (state === "SUBSCRIBED") {
+        try {
+          await duoChannel.track({
+            user_id: currentUser.id, username: displayName, avatar_id: profileAvatarId, availability:availabilityStatus,
+            online_at: new Date().toISOString()
+          });
+          if (channel === duoChannel) updatePartnerPresence();
+        } catch (error) {
+          showError("roomStatus", error);
+          setPartnerStatus("تعذّر تحديث حالة الاتصال", false);
+        }
+      } else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") {
+        status(
+          "roomStatus",
+          "Realtime connection issue. Check your connection and try refreshing the page.",
+          "error"
+        );
+        setPartnerStatus("تعذّر الاتصال بخدمة الحالة", false);
+      } else if (state === "CLOSED" && channel === duoChannel) {
+        setPartnerStatus("○ الشخص الثاني غير متصل", false);
+      }
+    });
+  }
+  let unreadIncoming=0;
+  function setUnreadDot(on){const dot=$("chatUnreadDot");if(dot)dot.style.display=on?"block":"none";}
+  function markMessagesRead(){if(!currentDuo||!currentUser)return;const chatActive=$("view-chat")?.classList.contains("active");if(!chatActive)return;
+    const duoId=currentDuo.id;
+    client.rpc("mark_duo_messages_read",{p_duo_id:duoId}).then(async({error})=>{
+      if(error){console.warn("Read receipt update failed",error);return;}
+      const readAt=new Date().toISOString();
+      if(channel&&currentDuo?.id===duoId){
+        const result=await channel.send({type:"broadcast",event:"messages_read",payload:{user_id:currentUser.id,read_at:readAt}});
+        if(result!=="ok")console.warn("Read receipt broadcast failed:",result);
+      }
+    }).catch(error=>console.warn("Read receipt update failed",error));
+    unreadIncoming=0;setUnreadDot(false);
+  }
+  function setMessageReadLabel(div,m){if(m.user_id!==currentUser.id)return;let label=div.querySelector(".msg-read");if(!label){label=document.createElement("div");label.className="msg-read";div.append(label);}label.textContent=m.read_at?"✓✓ Read":"✓ Sent";label.classList.toggle("read",!!m.read_at);}
+  function renderMessage(m) {
+    let div=$("messages").querySelector('[data-id="'+m.id+'"]');
+    if(!div){div=document.createElement("div");div.className="msg"+(m.user_id===currentUser.id?" mine":"");div.dataset.id=m.id;$ ("messages").append(div);}
+    div.dataset.userId=m.user_id;
+    div.innerHTML="";
+    const head=document.createElement("div");head.className="msg-head";
+    const avatar=document.createElement("img");avatar.className="msg-avatar";avatar.alt="";let av=m.user_id===currentUser.id?profileAvatarId:partnerAvatarId;if(av)avatar.src=avatarSrc(av);else avatar.src="data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" rx="50" fill="#273452"/><text x="50" y="58" font-size="42" text-anchor="middle" fill="white">D</text></svg>`);
+    const meta=document.createElement("small");meta.textContent=(m.user_id===currentUser.id?displayName:(partnerName||"Partner"))+" · "+new Date(m.created_at).toLocaleString();head.append(avatar,meta);
+    const body=document.createElement("div");body.className="msg-body";
+    const deleted=m.content==="تم حذف الرسالة"||m.content==="__DUO_DELETED__";
+    if(deleted){body.textContent="تم حذف الرسالة";div.classList.add("deleted");}
+    else if(typeof m.content==="string"&&m.content.startsWith("DUO_IMAGE:")){const img=document.createElement("img");img.className="msg-image";img.src=m.content.slice(10);img.alt="Shared image";img.loading="lazy";body.append(img);}
+    else body.textContent=m.content;
+    div.append(head,body);
+    setMessageReadLabel(div,m);
+    if(!deleted&&m.user_id===currentUser.id){const tools=document.createElement("div");tools.className="msg-tools";const del=document.createElement("button");del.textContent="Delete";del.onclick=async()=>{if(!confirm("حذف الرسالة عند الطرفين؟"))return;del.disabled=true;const {error}=await client.from("duo_messages").update({content:"تم حذف الرسالة"}).eq("id",m.id).eq("user_id",currentUser.id);if(error){del.disabled=false;showError("roomStatus",error);}else{
+        renderMessage({...m,content:"تم حذف الرسالة"});
+        if(channel&&currentDuo){const result=await channel.send({type:"broadcast",event:"message_deleted",payload:{id:m.id,user_id:currentUser.id}});if(result!=="ok")console.warn("Message deletion broadcast failed:",result);}
+      }};tools.append(del);div.append(tools);}
+    $("messages").scrollTop=$("messages").scrollHeight;
+  }
+  async function loadMessages() {
+    $("messages").innerHTML="";
+    const {data,error}=await client.from("duo_messages").select("*").eq("duo_id",currentDuo.id).order("created_at",{ascending:true}).limit(100);
+    if(error) throw error;
+    data.forEach(renderMessage);
+    if($("view-chat")?.classList.contains("active"))markMessagesRead();
+  }
+  async function joinByCode(code) {
+    const normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode) throw new Error("Enter an invitation code first.");
+    // Join securely through the SECURITY DEFINER RPC.
+    const {data, error} = await client.rpc("join_permanent_duo", {
+      p_invite_code: normalizedCode,
+      p_nickname: displayName || "Duo member"
+    });
+    if (error) throw error;
+    if (!data || !data.duo_id) throw new Error("The join function did not return a duo_id.");
+    // The RPC returns the permanent Duo id and invitation code.
+    await enterDuo({
+      id: data.duo_id,
+      invite_code: data.invite_code || normalizedCode,
+      name: "Our Space"
+    });
+  }
+
+  async function persistDuoProfile(){
+    if(!currentUser||!currentDuo)return;
+    const {error}=await client.rpc("update_my_duo_profile",{p_nickname:displayName,p_avatar_id:profileAvatarId,p_availability:availabilityStatus});
+    if(error)throw error;
+    const mine=(currentDuo.members||[]).find(m=>m.user_id===currentUser.id);
+    if(mine)Object.assign(mine,{nickname:displayName,avatar_id:profileAvatarId,availability:availabilityStatus});
+  }
+
+  async function broadcastProfileAvatar(){
+    if(!currentUser)return;
+    if(!channel||!currentDuo){$("settingsStatus").textContent="Avatar saved on this device. It will sync when you join your Duo.";return;}
+    try{
+      await persistDuoProfile();
+      const {error}=await channel.send({type:"broadcast",event:"profile_avatar",payload:{user_id:currentUser.id,username:displayName,avatar_id:profileAvatarId,updated_at:new Date().toISOString()}});
+      if(error)throw error;
+      $("settingsStatus").textContent="Avatar updated and sent to your partner.";
+    }catch(e){console.warn("Could not broadcast avatar:",e);$("settingsStatus").textContent="Avatar saved here, but live sync failed: "+(e?.message||e);}
+  }
+  $("openSettings").onclick=()=>{ $("settingsUsername").value=displayName;loadPersonalSettings();$("settingsStatus").textContent="";$("settingsModal").classList.remove("hidden"); };
+  $("closeSettings").onclick=()=>$ ("settingsModal").classList.add("hidden");
+  $("saveSettings").onclick=async()=>{
+    const nextName=$("settingsUsername").value.trim();
+    if(!nextName){$("settingsStatus").textContent="Please enter a username.";return;}
+    if(nextName.length>24){$("settingsStatus").textContent="Username must be 24 characters or fewer.";return;}
+    displayName=nextName;personalSettings={theme:$("personalTheme").value,accent:$("personalAccent").value,notifications:$("notificationsEnabled").checked,backgroundMusic:$("backgroundMusicEnabled").checked,musicVolume:Number($("musicVolume").value),gameVolume:Number($("gameVolume").value)};
+    if(currentUser){localStorage.setItem("duospace_name_"+currentUser.id,displayName);localStorage.setItem("duospace_settings_"+currentUser.id,JSON.stringify(personalSettings));}
+    $("who").textContent=displayName;applyPersonalSettings();updateAvatarUI();
+    if(currentDuo){try{await persistDuoProfile();}catch(e){showError("settingsStatus",e);return;}}
+    if(channel&&currentUser){
+      try {
+        await channel.track({user_id:currentUser.id,username:displayName,avatar_id:profileAvatarId,online_at:new Date().toISOString()});
+        await channel.send({type:"broadcast",event:"profile_avatar",payload:{user_id:currentUser.id,username:displayName,avatar_id:profileAvatarId,updated_at:new Date().toISOString()}});
+      } catch(e) { console.warn("Presence profile update failed",e); }
+    }
+    $("settingsStatus").textContent="Personal settings saved on this device.";
+  };
+  async function authenticateWithEmail(mode){
+    const email=$("authEmail").value.trim().toLowerCase();
+    const password=$("authPassword").value;
+    if(!email||!password){status("authStatus","Please enter your email and password.","error");return;}
+    if(password.length<6){status("authStatus","Password must be at least 6 characters.","error");return;}
+    const signInButton=$("emailSignin"),signUpButton=$("emailSignup");
+    signInButton.disabled=true;signUpButton.disabled=true;
+    status("authStatus",mode==="signup"?"Creating your account…":"Signing in…","ok");
+    try{
+      let result;
+      if(mode==="signup"){
+        result=await client.auth.signUp({email,password,options:{data:{display_name:email.split("@")[0]}}});
+      }else{
+        result=await client.auth.signInWithPassword({email,password});
+      }
+      if(result.error)throw result.error;
+      if(mode==="signup"&&!result.data?.session){
+        status("authStatus","Account created. Check your email to confirm your account, then sign in.","ok");
+      }else{
+        status("authStatus",mode==="signup"?"Account created successfully.":"Signed in successfully.","ok");
+      }
+    }catch(error){showError("authStatus",error);}
+    finally{signInButton.disabled=false;signUpButton.disabled=false;}
+  }
+  $("emailSignin").onclick=()=>authenticateWithEmail("signin");
+  $("emailSignup").onclick=()=>authenticateWithEmail("signup");
+  $("authPassword").addEventListener("keydown",event=>{if(event.key==="Enter")authenticateWithEmail("signin");});
+  async function deleteAllDuoMemories(duoId){
+    const paths=[];let offset=0;const pageSize=1000;
+    while(true){
+      const {data,error}=await memoryBucket.list(duoId,{limit:pageSize,offset});
+      if(error)throw error;
+      const files=(data||[]).filter(item=>item?.name&&item.metadata);
+      paths.push(...files.map(item=>duoId+"/"+item.name));
+      if(!data||data.length<pageSize)break;
+      offset+=pageSize;
+    }
+    for(let i=0;i<paths.length;i+=100){const {error}=await memoryBucket.remove(paths.slice(i,i+100));if(error)throw error;}
+  }
+  async function leaveCurrentRoom(){
+    if(!currentDuo)return;
+    if(!confirm("End this permanent Duo for both people? All shared messages, settings and memories will be deleted. This cannot be undone."))return;
+    const duoId=currentDuo.id;
+    try{
+      status("roomStatus","Removing shared memories…","ok");
+      await deleteAllDuoMemories(duoId);
+      const {data,error}=await client.rpc("leave_permanent_duo");
+      if(error)throw error;
+      if(!data?.success)throw new Error("The Duo could not be ended.");
+      await cleanupDuoChannel();currentDuo=null;showJourneyLinked(false);if(journeyTimer)clearInterval(journeyTimer);journeyRow=null;
+      submittedWord=null;partnerSubmittedWord=null;outgoingGameInvite=null;incomingGameInvite=null;
+      $("copyRoomCode").classList.add("hidden");$("leaveRoom").classList.add("hidden");
+      $("chatPanel").classList.add("hidden");$("messages").innerHTML="";$("message").value="";
+      $("roomInfo").textContent="No Duo connected";$("createRoom").parentElement.classList.remove("hidden");$("homeNameRight").textContent="Partner";$("homePartnerStatus").textContent="—";
+      updateHomeConnection(false,null);setPartnerStatus("Duo ended",false);showGamesMenu();switchView("home");
+      status("roomStatus","Your Duo has ended. You can create or join another Duo.","ok");
+    }catch(e){showError("roomStatus",e);}
+  }
+  $("leaveRoom").onclick=leaveCurrentRoom;
+
+  $("logout").onclick = async () => {
+    await cleanupDuoChannel();
+    currentDuo = null;showJourneyLinked(false);if(journeyTimer)clearInterval(journeyTimer);journeyRow=null;
+    $("copyRoomCode").classList.add("hidden");$("leaveRoom").classList.add("hidden");updateHomeConnection(false,null);
+    $("chatPanel").classList.add("hidden");
+    $("messages").innerHTML = "";
+    setPartnerStatus("غير متصل بالغرفة", false);
+
+    const { error } = await client.auth.signOut();
+    if (error) {
+      showError("roomStatus", error);
+      return;
+    }
+    showApp(null);
+  };
+  $("createRoom").onclick=async()=>{
+    try{
+      // Use the existing SECURITY DEFINER RPC so room creation is handled server-side.
+      const {data,error}=await client.rpc("create_permanent_duo",{p_nickname:displayName||"Member"});
+      if(error)throw error;
+      const duo={id:data?.duo_id,invite_code:data?.invite_code,name:"Our Space"};
+      if(!duo.id || !duo.invite_code) throw new Error("Duo creation response is missing duo_id or invite_code.");
+      await enterDuo(duo);
+      status("roomStatus","Duo created! Share this invitation code with your partner: "+duo.invite_code,"ok");
+    }catch(e){showError("roomStatus",e);}
+  };
+  $("joinRoom").onclick=async()=>{
+    try{await joinByCode($("invite").value);status("roomStatus","Joined Duo successfully.","ok");}
+    catch(e){showError("roomStatus",e);}
+  };
+  document.querySelectorAll("[data-availability]").forEach(btn=>btn.onclick=async()=>{availabilityStatus=btn.dataset.availability;const own=$("homeOwnStatus");if(own)own.textContent=({available:"🟢 Free",busy:"🔴 Busy",sleeping:"🌙 Sleeping"}[availabilityStatus]);document.querySelectorAll("[data-availability]").forEach(b=>b.classList.toggle("selected",b===btn));if(currentDuo){try{await persistDuoProfile();}catch(e){showError("roomStatus",e);return;}}if(channel&&currentUser){try{await channel.track({user_id:currentUser.id,username:displayName,avatar_id:profileAvatarId,availability:availabilityStatus,online_at:new Date().toISOString()});await channel.send({type:"broadcast",event:"availability",payload:{user_id:currentUser.id,availability:availabilityStatus}});}catch(e){console.warn(e);}}});
+  $("copyRoomCode").onclick=async()=>{if(!currentDuo?.invite_code)return;try{await navigator.clipboard.writeText(currentDuo.invite_code);status("roomStatus","Duo code copied!","ok");}catch{const t=document.createElement("textarea");t.value=currentDuo.invite_code;document.body.append(t);t.select();document.execCommand("copy");t.remove();status("roomStatus","Duo code copied!","ok");}};
+
+  async function sendMessage(){
+    const content=$("message").value.trim();if(!content||!currentDuo)return;
+    stopTyping();
+    const sendButton=$("send");
+    sendButton.disabled=true;
+    try{
+      const {data,error}=await client.from("duo_messages")
+        .insert({duo_id:currentDuo.id,user_id:currentUser.id,content})
+        .select("*").single();
+      if(error)throw error;
+      // Render the confirmed row locally immediately; realtime will safely update
+      // the same DOM node later because renderMessage deduplicates by message id.
+      if(data){
+        renderMessage(data);
+        // Deliver the confirmed row immediately to the partner over the Duo channel.
+        if(channel && currentDuo){
+          const broadcastResult = await channel.send({
+            type:"broadcast",
+            event:"new_message",
+            payload:{message:data}
+          });
+          if(broadcastResult !== "ok"){
+            console.warn("Message broadcast fallback failed:", broadcastResult);
+          }
+        }
+      }
+      $("message").value="";
+      if($("view-chat")?.classList.contains("active"))markMessagesRead();
+    }catch(error){showError("roomStatus",error);}
+    finally{sendButton.disabled=false;}
+  }
+  $("send").onclick=sendMessage;
+
+  $("message").addEventListener("input", handleMessageInput);
+  $("message").addEventListener("blur", stopTyping);
+  $("message").addEventListener("keydown",e=>{if(e.key==="Enter")sendMessage();});
+
+  // Games hub: choosing a tile sends an invitation; it never opens immediately.
+  function showGamesMenu(){ $("gamesMenu").classList.remove("hidden"); document.querySelectorAll(".game-screen").forEach(x=>x.classList.add("hidden")); }
+  function launchInvitedGame(game){
+    if(!["memory","quiz","word"].includes(game)) return;
+    $("gameInviteModal").classList.add("hidden"); $("gamesMenu").classList.add("hidden");
+    document.querySelectorAll(".game-screen").forEach(x=>x.classList.add("hidden"));
+    const chosen=$("game-"+game); if(chosen)chosen.classList.remove("hidden");
+    switchView("games");
+  }
+  document.querySelectorAll(".game-tile").forEach(b=>b.addEventListener("click",async()=>{
+    const game=b.dataset.game;
+    if(!currentDuo || !channel){ $("gameInviteNotice").textContent="Join your shared Duo before inviting your partner."; $("gameInviteNotice").classList.remove("hidden"); return; }
+    const peers=Object.values(channel.presenceState()).flat().filter(x=>x.user_id&&x.user_id!==currentUser.id);
+    if(!peers.length){ $("gameInviteNotice").textContent="Your partner is offline. They must be online in your Duo to receive the invitation."; $("gameInviteNotice").classList.remove("hidden"); return; }
+    if(outgoingGameInvite){ $("gameInviteNotice").textContent="You already have a pending game invitation."; $("gameInviteNotice").classList.remove("hidden"); return; }
+    outgoingGameInvite={game,invite_id:currentUser.id+"-"+Date.now()};
+    const label=b.querySelector("strong")?.textContent||game;
+    const {error}=await channel.send({type:"broadcast",event:"game_invite",payload:{user_id:currentUser.id,username:displayName,game,invite_id:outgoingGameInvite.invite_id}});
+    if(error){outgoingGameInvite=null;$("gameInviteNotice").textContent="Could not send invitation: "+error.message;}
+    else $("gameInviteNotice").textContent="Invitation sent for "+label+". Waiting for your partner to accept…";
+    $("gameInviteNotice").classList.remove("hidden");
+  }));
+  $("acceptGameInvite").onclick=async()=>{if(!incomingGameInvite||!channel)return;const invite=incomingGameInvite;$("gameInviteModal").classList.add("hidden");await channel.send({type:"broadcast",event:"game_invite_response",payload:{user_id:currentUser.id,username:displayName,invite_id:invite.invite_id,accepted:true}});};
+  $("declineGameInvite").onclick=async()=>{if(!incomingGameInvite||!channel)return;const invite=incomingGameInvite;incomingGameInvite=null;$("gameInviteModal").classList.add("hidden");await channel.send({type:"broadcast",event:"game_invite_response",payload:{user_id:currentUser.id,username:displayName,invite_id:invite.invite_id,accepted:false}});};
+  async function leaveGameConfirmed(){
+    if(!confirm("Leave this game? Your partner will leave the game too."))return;
+    if(channel&&currentDuo)await channel.send({type:"broadcast",event:"duo_game_exit",payload:{user_id:currentUser.id,username:displayName}});
+    showGamesMenu();
+    $("gameInviteNotice").textContent="You left the game. It has ended for both players.";
+    $("gameInviteNotice").classList.remove("hidden");
+  }
+  document.querySelectorAll(".gameBack").forEach(b=>b.addEventListener("click",leaveGameConfirmed));
+  const gamesNav=document.querySelector('[data-view="games"]'); if(gamesNav)gamesNav.addEventListener("click",showGamesMenu);
+  // Multiplayer game state is exchanged over Supabase Broadcast (no additional tables).
+  function gameBroadcast(kind,data){if(channel&&currentDuo)channel.send({type:"broadcast",event:"duo_game",payload:{user_id:currentUser.id,kind,...data}});}
+  const cards=["🍎","🍎","🌙","🌙","⭐","⭐","🐱","🐱","🎈","🎈","🍀","🍀","⚽","⚽","🎵","🎵","💎","💎","🌻","🌻"];
+  let deck=[],flipped=[],matchedCards=[],pairs=0,memoryTurn=null,memoryScores={},memoryBusy=false,memoryCelebrated=false;
+  function memoryConfetti(){for(let i=0;i<48;i++){const c=document.createElement("i");c.className="game-confetti";c.style.left=Math.random()*100+"vw";c.style.background=["#b99be9","#86d8c4","#ffd479","#ff91b5","#91b8ff"][i%5];c.style.setProperty("--fall",(2+Math.random()*2.2)+"s");c.style.setProperty("--drift",(Math.random()*220-110)+"px");c.style.animationDelay=(Math.random()*.35)+"s";document.body.append(c);setTimeout(()=>c.remove(),4500);}}
+  function renderCards(){
+    const g=$("memoryGrid");g.innerHTML="";
+    deck.forEach((v,i)=>{
+      const b=document.createElement("button");
+      const isMatched=matchedCards.includes(i);
+      b.textContent=isMatched||flipped.includes(i)?v:"?";
+      b.style.minHeight="58px";
+      b.style.background=isMatched?"#245b50":(flipped.includes(i)?"#5147a0":"#273452");
+      b.disabled=memoryBusy||isMatched||flipped.includes(i)||flipped.length>=2||(memoryTurn&&memoryTurn!==currentUser?.id);
+      b.onclick=()=>{
+        if(b.disabled)return;
+        flipped.push(i);gameTone("tap");renderCards();
+        if(flipped.length===2){
+          memoryBusy=true;
+          const [a,c]=flipped;
+          if(deck[a]===deck[c]){
+            matchedCards.push(a,c);pairs++;gameTone("win");
+            memoryScores[currentUser.id]=(memoryScores[currentUser.id]||0)+1;
+            flipped=[];memoryBusy=false;renderCards();
+            gameBroadcast("memory",{deck,flipped,matched:matchedCards,pairs,turn:memoryTurn,scores:memoryScores});
+          }else{
+            gameTone("wrong");g.querySelectorAll("button").forEach((card,idx)=>{if(idx===a||idx===c)card.classList.add("card-miss");});
+            gameBroadcast("memory",{deck,flipped,matched:matchedCards,pairs,turn:memoryTurn,scores:memoryScores});
+            setTimeout(()=>{
+              flipped=[];memoryBusy=false;
+              const entries=channel?Object.values(channel.presenceState()).flat():[];
+              memoryTurn=entries.find(x=>x.user_id&&x.user_id!==currentUser.id)?.user_id||null;
+              renderCards();gameBroadcast("memory",{deck,flipped,matched:matchedCards,pairs,turn:memoryTurn,scores:memoryScores});
+            },1000);
+          }
+        }
+      };
+      g.append(b);
+    });
+    $("memoryScore").textContent="Pairs: "+pairs+" / 10 · "+Object.entries(memoryScores).map(([id,sc])=>(id===currentUser?.id?displayName:partnerName)+": "+sc).join(" · ");if(pairs>=10){const vals=Object.values(memoryScores),mine=memoryScores[currentUser?.id]||0,other=vals.reduce((a,b)=>a+b,0)-mine;$("memoryResult").textContent=mine===other?"🤝 تعادل!":(mine>other?displayName:partnerName)+" فاز باللعبة!";if(!memoryCelebrated){memoryCelebrated=true;memoryConfetti();$("memoryResult").classList.add("game-win-banner");}}else $("memoryResult").textContent="";
+  }
+  function resetCards(){deck=cards.slice().sort(()=>Math.random()-.5);flipped=[];matchedCards=[];pairs=0;memoryScores={};memoryBusy=false;memoryCelebrated=false;memoryTurn=currentUser?.id||null;$("memoryResult").textContent="";renderCards();gameBroadcast("memory",{deck,flipped,matched:matchedCards,pairs,turn:memoryTurn,scores:memoryScores});}
+  $("resetMemory").onclick=resetCards;resetCards();
+  const questions=[{"q":"ما هي عاصمة المغرب؟","a":["الدار البيضاء","الرباط","مراكش"],"c":1,"level":"سهل"},{"q":"كم عدد أيام الأسبوع؟","a":["7 أيام","5 أيام","8 أيام"],"c":0,"level":"سهل"},{"q":"ما هو أكبر كوكب في المجموعة الشمسية؟","a":["الأرض","المريخ","المشتري"],"c":2,"level":"سهل"},{"q":"ما هو الحيوان الذي يُلقب بملك الغابة؟","a":["النمر","الأسد","الفهد"],"c":1,"level":"سهل"},{"q":"كم عدد ألوان قوس قزح؟","a":["5","6","7"],"c":2,"level":"سهل"},{"q":"ما هي عاصمة فرنسا؟","a":["باريس","روما","مدريد"],"c":0,"level":"سهل"},{"q":"ما هو الكوكب المعروف بالكوكب الأحمر؟","a":["الزهرة","المريخ","عطارد"],"c":1,"level":"سهل"},{"q":"ما هو أكبر محيط في العالم؟","a":["المحيط الأطلسي","المحيط الهندي","المحيط الهادئ"],"c":2,"level":"سهل"},{"q":"ما هي اللغة الرسمية في البرازيل؟","a":["الإسبانية","البرتغالية","الفرنسية"],"c":1,"level":"سهل"},{"q":"كم عدد قارات العالم؟","a":["7","5","6"],"c":0,"level":"سهل"},{"q":"ما هو العضو الذي يضخ الدم في جسم الإنسان؟","a":["الرئة","الكبد","القلب"],"c":2,"level":"سهل"},{"q":"ما هو أسرع حيوان بري؟","a":["الأسد","الفهد","الحصان"],"c":1,"level":"سهل"},{"q":"ما هي عاصمة مصر؟","a":["القاهرة","الإسكندرية","الأقصر"],"c":0,"level":"سهل"},{"q":"كم عدد الأسنان عند الإنسان البالغ غالباً؟","a":["28","30","32"],"c":2,"level":"سهل"},{"q":"ما هو الغاز الذي يحتاجه الإنسان للتنفس؟","a":["النيتروجين","الأكسجين","الهيدروجين"],"c":1,"level":"سهل"},{"q":"في أي قارة تقع اليابان؟","a":["آسيا","أوروبا","إفريقيا"],"c":0,"level":"سهل"},{"q":"ما هو الحيوان الذي يُعرف بقدرته على تغيير لونه؟","a":["السلحفاة","الأرنب","الحرباء"],"c":2,"level":"سهل"},{"q":"ما هي عاصمة إسبانيا؟","a":["برشلونة","مدريد","فالنسيا"],"c":1,"level":"سهل"},{"q":"كم عدد أشهر السنة؟","a":["12","10","11"],"c":0,"level":"سهل"},{"q":"ما هو البحر الذي يفصل المغرب عن أوروبا؟","a":["البحر الأحمر","بحر العرب","البحر الأبيض المتوسط"],"c":2,"level":"سهل"},{"q":"ما هو المعدن الذي يُصنع منه الذهب الخالص؟","a":["الحديد","الذهب","النحاس"],"c":1,"level":"سهل"},{"q":"ما هي أكبر دولة في العالم من حيث المساحة؟","a":["روسيا","الصين","كندا"],"c":0,"level":"سهل"},{"q":"ما هو الحيوان الذي يعيش في الماء ويتنفس بالخياشيم؟","a":["القط","الحصان","السمك"],"c":2,"level":"سهل"},{"q":"ما هي عاصمة المملكة العربية السعودية؟","a":["جدة","الرياض","مكة"],"c":1,"level":"سهل"},{"q":"ما هو الشيء الذي يقيس درجة الحرارة؟","a":["الميزان","البوصلة","مقياس الحرارة"],"c":2,"level":"سهل"},{"q":"ما هي العملة الرسمية للمغرب؟","a":["الدرهم","الدينار","الريال"],"c":0,"level":"سهل"},{"q":"ما هو الطائر الذي لا يستطيع الطيران ويعيش في القطب الجنوبي؟","a":["النسر","البطريق","الحمامة"],"c":1,"level":"سهل"},{"q":"كم عدد اللاعبين في فريق كرة القدم داخل الملعب لكل فريق؟","a":["10","12","11"],"c":2,"level":"سهل"},{"q":"ما هو الكوكب الذي نعيش عليه؟","a":["الأرض","زحل","أورانوس"],"c":0,"level":"سهل"},{"q":"ما هي عاصمة إيطاليا؟","a":["ميلانو","روما","نابولي"],"c":1,"level":"سهل"},{"q":"ما هو أكبر حيوان يعيش على الأرض؟","a":["الفيل الإفريقي","الزرافة","الحوت الأزرق"],"c":2,"level":"سهل"},{"q":"ما هي المادة التي تتكون منها غالبية سطح الشمس؟","a":["الحديد","الماء","الهيدروجين"],"c":2,"level":"سهل"},{"q":"ما هو الجهاز الذي نستعمله لرؤية الأشياء البعيدة في الفضاء؟","a":["المجهر","التلسكوب","الرادار"],"c":1,"level":"سهل"},{"q":"ما هي عاصمة الجزائر؟","a":["الجزائر العاصمة","وهران","قسنطينة"],"c":0,"level":"سهل"},{"q":"كم عدد أرجل العنكبوت؟","a":["6","10","8"],"c":2,"level":"سهل"},{"q":"من هو العالم الذي وضع قوانين الحركة الثلاثة؟","a":["ألبرت أينشتاين","إسحاق نيوتن","غاليليو غاليلي"],"c":1,"level":"متوسط"},{"q":"ما هي عاصمة أستراليا؟","a":["سيدني","ملبورن","كانبيرا"],"c":2,"level":"متوسط"},{"q":"في أي سنة انتهت الحرب العالمية الثانية؟","a":["1945","1942","1950"],"c":0,"level":"متوسط"},{"q":"ما هو العنصر الكيميائي الذي رمزه Fe؟","a":["الفضة","الحديد","الفلور"],"c":1,"level":"متوسط"},{"q":"ما هو أطول نهر في إفريقيا؟","a":["نهر الكونغو","نهر النيجر","نهر النيل"],"c":2,"level":"متوسط"},{"q":"من هو مؤلف رواية البؤساء؟","a":["فيكتور هوغو","ألبير كامو","ألكسندر دوما"],"c":0,"level":"متوسط"},{"q":"ما هي الدولة التي تشتهر ببرج بيزا المائل؟","a":["فرنسا","إيطاليا","ألمانيا"],"c":1,"level":"متوسط"},{"q":"كم عدد الكواكب في المجموعة الشمسية؟","a":["9","7","8"],"c":2,"level":"متوسط"},{"q":"ما هو الحيوان الذي يُعرف بأنه يمتلك ثلاث قلوب؟","a":["الأخطبوط","القرش","الحوت"],"c":0,"level":"متوسط"},{"q":"ما هي عاصمة تركيا؟","a":["إسطنبول","أنقرة","إزمير"],"c":1,"level":"متوسط"},{"q":"من هو أول إنسان صعد إلى سطح القمر؟","a":["يوري غاغارين","باز ألدرين","نيل أرمسترونغ"],"c":2,"level":"متوسط"},{"q":"ما هي أكبر صحراء حارة في العالم؟","a":["الصحراء الكبرى","صحراء غوبي","صحراء كالاهاري"],"c":0,"level":"متوسط"},{"q":"ما هو العنصر الكيميائي الذي رمزه Au؟","a":["الألومنيوم","الذهب","الفضة"],"c":1,"level":"متوسط"},{"q":"في أي دولة توجد مدينة البتراء الأثرية؟","a":["العراق","لبنان","الأردن"],"c":2,"level":"متوسط"},{"q":"ما هي عاصمة النرويج؟","a":["أوسلو","ستوكهولم","هلسنكي"],"c":0,"level":"متوسط"},{"q":"من هو مخترع الهاتف الذي ارتبط اسمه تاريخياً باختراع الهاتف؟","a":["توماس إديسون","ألكسندر غراهام بيل","نيكولا تسلا"],"c":1,"level":"متوسط"},{"q":"ما هو أكبر عضو في جسم الإنسان؟","a":["الكبد","القلب","الجلد"],"c":2,"level":"متوسط"},{"q":"ما هي الدولة التي فازت بكأس العالم لكرة القدم سنة 2018؟","a":["فرنسا","كرواتيا","ألمانيا"],"c":0,"level":"متوسط"},{"q":"ما هو اسم العملية التي تقوم بها النباتات لصنع غذائها باستخدام الضوء؟","a":["التنفس","البناء الضوئي","التخمّر"],"c":1,"level":"متوسط"},{"q":"ما هي عاصمة كوريا الجنوبية؟","a":["طوكيو","بكين","سيول"],"c":2,"level":"متوسط"},{"q":"من هو مؤلف كتاب الأمير؟","a":["نيكولو مكيافيلي","أفلاطون","أرسطو"],"c":0,"level":"متوسط"},{"q":"ما هي أصغر دولة في العالم من حيث المساحة؟","a":["موناكو","الفاتيكان","مالطا"],"c":1,"level":"متوسط"},{"q":"ما هو المحيط الذي يقع بين إفريقيا وأستراليا؟","a":["المحيط الأطلسي","المحيط الهادئ","المحيط الهندي"],"c":2,"level":"متوسط"},{"q":"ما هي عاصمة سويسرا؟","a":["برن","زيورخ","جنيف"],"c":0,"level":"متوسط"},{"q":"كم عدد عظام جسم الإنسان البالغ تقريباً؟","a":["206","300","150"],"c":0,"level":"متوسط"},{"q":"ما هو الكوكب الذي يمتلك حلقات واضحة ومشهورة؟","a":["المريخ","زحل","الأرض"],"c":1,"level":"متوسط"},{"q":"في أي سنة سقط جدار برلين؟","a":["1985","1991","1989"],"c":2,"level":"متوسط"},{"q":"ما هي عاصمة الأرجنتين؟","a":["بوينس آيرس","سانتياغو","ليما"],"c":0,"level":"متوسط"},{"q":"من هو الرسام الذي رسم لوحة الموناليزا؟","a":["بابلو بيكاسو","ليوناردو دا فينشي","فان غوخ"],"c":1,"level":"متوسط"},{"q":"ما هو الغاز الأكثر وفرة في الغلاف الجوي للأرض؟","a":["الأكسجين","ثاني أكسيد الكربون","النيتروجين"],"c":2,"level":"متوسط"},{"q":"ما هي الدولة التي كانت تُعرف قديماً باسم بلاد فارس؟","a":["إيران","أفغانستان","تركيا"],"c":0,"level":"متوسط"},{"q":"ما هي عاصمة المكسيك؟","a":["مونتيري","مكسيكو سيتي","غوادالاخارا"],"c":1,"level":"متوسط"},{"q":"ما هو الحيوان الثديي الذي يضع البيض؟","a":["الكنغر","الدلفين","خلد الماء"],"c":2,"level":"متوسط"},{"q":"من هو مؤسس شركة Microsoft بالاشتراك مع بول ألين؟","a":["بيل غيتس","ستيف جوبز","مارك زوكربيرغ"],"c":0,"level":"متوسط"},{"q":"ما هو اسم المضيق الذي يفصل بين المغرب وإسبانيا؟","a":["مضيق هرمز","مضيق جبل طارق","مضيق البوسفور"],"c":1,"level":"متوسط"},{"q":"ما هو العنصر الكيميائي الذي يحمل الرمز W؟","a":["التنغستن","التنتالوم","التيتانيوم"],"c":0,"level":"صعب"},{"q":"ما هي عاصمة كازاخستان؟","a":["ألماتي","أستانا","طشقند"],"c":1,"level":"صعب"},{"q":"من هو العالم الذي اكتشف البنسلين؟","a":["لويس باستور","روبرت كوخ","ألكسندر فليمنغ"],"c":2,"level":"صعب"},{"q":"ما هي أعمق نقطة معروفة في المحيطات؟","a":["خندق ماريانا","خندق بورتوريكو","خندق جاوة"],"c":0,"level":"صعب"},{"q":"في أي سنة سقطت القسطنطينية على يد العثمانيين؟","a":["1492","1453","1517"],"c":1,"level":"صعب"},{"q":"ما هو الكوكب الذي يستغرق أطول مدة لإكمال دورة حول الشمس؟","a":["أورانوس","زحل","نبتون"],"c":2,"level":"صعب"},{"q":"من هو مؤلف كتاب الأصل في الأنواع؟","a":["تشارلز داروين","غريغور مندل","كارل لينيوس"],"c":0,"level":"صعب"},{"q":"ما هي عاصمة أيسلندا؟","a":["كوبنهاغن","ريكيافيك","أوسلو"],"c":1,"level":"صعب"},{"q":"ما هو العدد الذري للعنصر الكربون؟","a":["8","12","6"],"c":2,"level":"صعب"},{"q":"ما هي الحضارة التي بنت مدينة ماتشو بيتشو؟","a":["الإنكا","المايا","الأزتك"],"c":0,"level":"صعب"},{"q":"ما هو اسم أول قمر صناعي أُطلق إلى الفضاء؟","a":["أبولو 11","سبوتنيك 1","فوستوك 1"],"c":1,"level":"صعب"},{"q":"من هو الفيلسوف الذي كان معلماً للإسكندر الأكبر؟","a":["سقراط","أفلاطون","أرسطو"],"c":2,"level":"صعب"},{"q":"ما هي عاصمة بوتان؟","a":["تيمفو","كاتماندو","دكا"],"c":0,"level":"صعب"},{"q":"ما هو أكبر قمر في المجموعة الشمسية؟","a":["تيتان","غانيميد","أوروبا"],"c":1,"level":"صعب"},{"q":"ما هي المعاهدة التي أنهت الحرب العالمية الأولى رسمياً مع ألمانيا؟","a":["معاهدة باريس","معاهدة لوزان","معاهدة فرساي"],"c":2,"level":"صعب"},{"q":"ما هو العالم الذي وضع مبدأ عدم اليقين في الفيزياء؟","a":["فيرنر هايزنبرغ","ماكس بلانك","نيلز بور"],"c":0,"level":"صعب"},{"q":"ما هي عاصمة أوزبكستان؟","a":["سمرقند","طشقند","بخارى"],"c":1,"level":"صعب"},{"q":"ما هو الحيوان الذي يمتلك أكبر دماغ من بين الحيوانات؟","a":["الفيل الإفريقي","الدلفين","الحوت الأزرق"],"c":2,"level":"صعب"},{"q":"ما هي اللغة التي كُتبت بها معظم النصوص الأصلية للكتاب المقدس القديم (العهد القديم)؟","a":["العبرية","اللاتينية","اليونانية"],"c":0,"level":"صعب"},{"q":"ما هو اسم أول امرأة فازت بجائزة نوبل؟","a":["روزاليند فرانكلين","ماري كوري","دوروثي هودجكين"],"c":1,"level":"صعب"},{"q":"ما هو المضيق الذي يفصل بين آسيا وأمريكا الشمالية؟","a":["مضيق جبل طارق","مضيق ملقا","مضيق بيرينغ"],"c":2,"level":"صعب"},{"q":"ما هو العدد التقريبي لأقمار كوكب المشتري المعروفة في أحدث الاكتشافات المعتمدة؟","a":["95","146","27"],"c":0,"level":"صعب"},{"q":"من هو مؤلف رواية 1984؟","a":["جورج أورويل","ألدوس هكسلي","فرانز كافكا"],"c":0,"level":"صعب"},{"q":"ما هي عاصمة إثيوبيا؟","a":["نيروبي","أسمرة","أديس أبابا"],"c":2,"level":"صعب"},{"q":"ما هو العنصر الكيميائي الذي رمزه Sb؟","a":["السيلينيوم","الأنتيمون","السيليكون"],"c":1,"level":"صعب"},{"q":"في أي سنة تم توقيع إعلان استقلال الولايات المتحدة الأمريكية؟","a":["1776","1789","1812"],"c":0,"level":"صعب"},{"q":"ما هي أكبر جزيرة في العالم، باستثناء القارات؟","a":["مدغشقر","بورنيو","غرينلاند"],"c":2,"level":"صعب"},{"q":"من هو العالم المسلم الذي اشتهر بتأسيس علم الجبر؟","a":["ابن الهيثم","الخوارزمي","ابن سينا"],"c":1,"level":"صعب"},{"q":"ما هو اسم المجرة التي ينتمي إليها النظام الشمسي؟","a":["درب التبانة","أندروميدا","مجرة سومبريرو"],"c":0,"level":"صعب"},{"q":"ما هي الدولة التي شهدت أول ثورة صناعية؟","a":["فرنسا","ألمانيا","بريطانيا"],"c":2,"level":"صعب"}];
+  let qi=0,quizScores={},quizAnswered=[],quizLocked=false;
+  // Lightweight synthesized game feedback (no external sound files).
+  let gameAudioCtx=null;function gameTone(kind="tap"){if((personalSettings.gameVolume??70)<=0)return;try{gameAudioCtx=gameAudioCtx||new (window.AudioContext||window.webkitAudioContext)();if(gameAudioCtx.state==="suspended")gameAudioCtx.resume();const osc=gameAudioCtx.createOscillator(),gain=gameAudioCtx.createGain(),now=gameAudioCtx.currentTime;osc.type=kind==="wrong"?"sawtooth":"sine";osc.frequency.setValueAtTime(kind==="win"?660:kind==="wrong"?220:440,now);if(kind==="win")osc.frequency.exponentialRampToValueAtTime(990,now+.16);gain.gain.setValueAtTime((personalSettings.gameVolume??70)/100*.12,now);gain.gain.exponentialRampToValueAtTime(.001,now+.22);osc.connect(gain);gain.connect(gameAudioCtx.destination);osc.start(now);osc.stop(now+.23);}catch{}}
+  document.addEventListener("click",e=>{if(e.target.closest(".game-screen button")&&!e.target.closest(".gameBack"))gameTone("tap");});
+  $("musicVolume").oninput=e=>{backgroundTrack.volume=Number(e.target.value)/100;personalSettings.musicVolume=Number(e.target.value);};
+  $("gameVolume").oninput=e=>{personalSettings.gameVolume=Number(e.target.value);};
+
+  function renderQuiz(){
+    const q=questions[qi];
+    document.getElementById("quizQuestion").textContent="["+q.level+" · "+(qi+1)+"/"+questions.length+"] "+q.q;
+    document.getElementById("quizOptions").innerHTML="";
+    q.a.forEach((v,i)=>{
+      const b=document.createElement("button");b.className="secondary";b.textContent=String.fromCharCode(65+i)+") "+v;b.disabled=quizLocked;
+      b.onclick=()=>{if(quizLocked)return;quizLocked=true;const correct=i===q.c;quizScores[currentUser.id]=(quizScores[currentUser.id]||0)+(correct?1:-1);gameTone(correct?"win":"wrong");document.getElementById("quizFeedback").textContent=(correct?"✅ Correct · +1 point":"❌ Incorrect · −1 point")+" · Next question…";gameBroadcast("quiz",{qi:(qi+1)%questions.length,scores:quizScores,answered:[],feedback:correct?"correct":"wrong"});setTimeout(()=>{qi=(qi+1)%questions.length;quizLocked=false;renderQuiz();},650);};
+      document.getElementById("quizOptions").append(b);
+    });
+    const scoreBox=document.getElementById("quizScore");scoreBox.innerHTML="";
+    const ids=[currentUser?.id,...Object.keys(quizScores).filter(id=>id!==currentUser?.id)];
+    const partnerId=ids.find(id=>id!==currentUser?.id)||"partner";
+    [[currentUser?.id,displayName],[partnerId,partnerName]].forEach(([id,name])=>{const card=document.createElement("div");card.className="quiz-score-card";const label=document.createElement("span");label.textContent=name||"Player";const val=document.createElement("strong");val.textContent=String(quizScores[id]||0);card.append(label,val);scoreBox.append(card);});
+    document.getElementById("quizFeedback").textContent="Question "+(qi+1)+" / "+questions.length;
+  }
+  renderQuiz();
+  document.getElementById("nextQuiz").onclick=()=>{ /* Questions advance automatically after an answer. */ };
+  function showWordMatchHearts(){const hearts=document.createElement("div");hearts.textContent="💕💗💖💘💝💕💗";hearts.style.cssText="position:fixed;inset:30% 0;text-align:center;font-size:45px;pointer-events:none;z-index:99;animation:heartPulse 1s ease-in-out infinite alternate";document.body.append(hearts);setTimeout(()=>hearts.remove(),3000);}
+  let wordRoundId = null;
+  function evaluateWordMatch(){
+    if(submittedWord===null||partnerSubmittedWord===null)return;
+    const mine=submittedWord,partner=partnerSubmittedWord,matched=mine===partner;
+    $("myWordDisplay").textContent=mine;
+    $("partnerWordDisplay").textContent=partner;
+    $("wordRevealMy").classList.toggle("is-match",matched);
+    $("wordRevealPartner").classList.toggle("is-match",matched);
+    $("wordRevealMy").classList.toggle("is-different",!matched);
+    $("wordRevealPartner").classList.toggle("is-different",!matched);
+    $("wordStatus").textContent=matched?"💕 الكلمات متطابقة! برافو عليكم.":"الكلمتان مختلفتان؛ جربوا جولة جديدة!";
+    if(matched){showWordMatchHearts();gameTone("win");}else gameTone("wrong");
+    submittedWord=null;partnerSubmittedWord=null;wordRoundId=null;
+  }
+  $("submitWord").onclick=async()=>{
+    if(!channel||!currentDuo){$("wordStatus").textContent="Connect your Duo first.";return;}
+    const w=$("secretWord").value.trim().toLocaleLowerCase();if(!w)return;
+    if(submittedWord!==null){$("wordStatus").textContent="تسنى حتى يسيفط الشريك.";return;}
+    if(!wordRoundId){wordRoundId=(window.crypto?.randomUUID?.()||String(Date.now())+"-"+currentUser.id);$("myWordDisplay").textContent="—";$("partnerWordDisplay").textContent="—";$("wordRevealMy").classList.remove("is-match","is-different");$("wordRevealPartner").classList.remove("is-match","is-different");}
+    submittedWord=w;$("secretWord").value="";$("wordStatus").textContent="تسيفطات كلمتك؛ كنتسناو الشريك…";
+    const result=await channel.send({type:"broadcast",event:"word_match",payload:{user_id:currentUser.id,word:w,round_id:wordRoundId}});
+    if(result!=="ok"){$("wordStatus").textContent="ما قدرناش نصيفطو الكلمة. حاول مرة أخرى.";submittedWord=null;return;}
+    evaluateWordMatch();
+    if(submittedWord===null&&partnerSubmittedWord===null){/* both submitted: next submit starts a fresh round */ wordRoundId=null;}
+  };
+  // Watch Together: invite the other Duo member before opening the shared video.
+  let outgoingWatchInvite=null, incomingWatchInvite=null;
+  function normalizeWatchUrl(raw){
+    let u;try{u=new URL(raw.trim());}catch{return null;}
+    if(!["http:","https:"].includes(u.protocol))return null;
+    const host=u.hostname.replace(/^www\./,"");
+    let videoId="";
+    if(host==="youtu.be")videoId=u.pathname.split("/").filter(Boolean)[0]||"";
+    else if(host.endsWith("youtube.com")){videoId=u.searchParams.get("v")||((u.pathname.match(/^\/(?:embed|shorts)\/([^/?]+)/)||[])[1]||"");}
+    if(videoId)return {url:"https://www.youtube.com/embed/"+encodeURIComponent(videoId)+"?autoplay=1&mute=1&playsinline=1",kind:"iframe"};
+    if(host.endsWith("vimeo.com")){const id=(u.pathname.match(/\/(\d+)/)||[])[1];if(id)return {url:"https://player.vimeo.com/video/"+id+"?autoplay=1&muted=1",kind:"iframe"};}
+    if(/\.(mp4|webm|ogg)(?:$|\?)/i.test(u.pathname+u.search))return {url:u.href,kind:"video"};
+    u.searchParams.set("autoplay","1");return {url:u.href,kind:"iframe"};
+  }
+  function openWatchSession(raw){
+    const parsed=normalizeWatchUrl(raw);if(!parsed)return;
+    switchView("watch");const player=$("watchPlayer");player.innerHTML="";
+    if(parsed.kind==="video"){
+      const video=document.createElement("video");video.src=parsed.url;video.controls=true;video.autoplay=true;video.playsInline=true;video.muted=true;player.append(video);video.play().catch(()=>{});
+    }else{
+      const frame=document.createElement("iframe");frame.src=parsed.url;frame.title="DuoSpace shared video";frame.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";frame.allowFullscreen=true;player.append(frame);
+    }
+    $("watchUrl").value=raw;$("stopWatching").classList.remove("hidden");status("watchStatus","You are watching together. Enjoy your time!","ok");
+  }
+  $("startWatching").onclick=async()=>{
+    const raw=$("watchUrl").value.trim();if(!normalizeWatchUrl(raw)){status("watchStatus","Please enter a valid video URL starting with https:// or http://.","error");return;}
+    if(!currentDuo||!channel){status("watchStatus","Connect your permanent Duo first.","error");return;}
+    if(outgoingWatchInvite){status("watchStatus","Your invitation is already waiting for a response…");return;}
+    const inviteId=(window.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(16).slice(2));
+    outgoingWatchInvite={invite_id:inviteId,url:raw};
+    status("watchStatus","Invitation sent. Waiting for your partner to accept…");
+    const sendStatus=await channel.send({type:"broadcast",event:"watch_request",payload:{user_id:currentUser.id,username:displayName,invite_id:inviteId,url:raw}});
+    if(sendStatus!=="ok"){outgoingWatchInvite=null;status("watchStatus","Could not send the invitation. Please try again.","error");}
+  };
+  $("acceptWatchInvite").onclick=async()=>{
+    if(!incomingWatchInvite||!channel)return;const invite=incomingWatchInvite;incomingWatchInvite=null;$("watchInviteModal").classList.add("hidden");
+    await channel.send({type:"broadcast",event:"watch_response",payload:{user_id:currentUser.id,invite_id:invite.invite_id,accepted:true}});openWatchSession(invite.url);
+  };
+  $("declineWatchInvite").onclick=async()=>{
+    if(!incomingWatchInvite||!channel)return;const invite=incomingWatchInvite;incomingWatchInvite=null;$("watchInviteModal").classList.add("hidden");
+    await channel.send({type:"broadcast",event:"watch_response",payload:{user_id:currentUser.id,invite_id:invite.invite_id,accepted:false}});
+  };
+  $("stopWatching").onclick=()=>{switchView("home");$("watchPlayer").innerHTML='<div class="watch-player-empty">🎬<br> Your shared screen will appear here.</div>';$("stopWatching").classList.add("hidden");status("watchStatus","Playback stopped on this device.");};
+
+  // Shared memory book: files live in the permanent Duo folder in Supabase Storage.
+  const memoryBucket = client.storage.from("duospace-memories");
+  let memoryItems = [], memoryPageIndex = -1;
+  function formatMemoryDate(value){
+    const date = new Date(value);
+    if(Number.isNaN(date.getTime())) return "A moment to remember";
+    return date.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"});
+  }
+  function renderMemoryBook(){
+    const wrap=$("memoryBook"), total=memoryItems.length;
+    wrap.innerHTML="";
+    if(memoryPageIndex<0){
+      const cover=document.createElement("div");cover.className="memory-book-cover";
+      cover.innerHTML='<div class="cover-spark">✦</div><div class="cover-kicker">DUOSPACE · PRIVATE EDITION</div><div class="cover-title">Our<br><em>Memories</em></div><div class="cover-rule"></div><div class="cover-subtitle">A collection of moments<br>made together</div><button id="openMemoryBook" class="cover-open">Open our book <span>→</span></button><div class="cover-bottom">EST. TOGETHER · ALWAYS</div>';
+      wrap.append(cover);
+      $("memoryPageLabel").textContent="THE FIRST PAGE · "+total+" PHOTO"+(total===1?"":"S");
+      $("memoryPrev").disabled=true;$("memoryNext").disabled=total===0;
+      $("openMemoryBook").onclick=()=>{if(total){memoryPageIndex=0;renderMemoryBook();}};
+      return;
+    }
+    if(!total){memoryPageIndex=-1;renderMemoryBook();return;}
+    memoryPageIndex=Math.min(memoryPageIndex,total-1);
+    const item=memoryItems[memoryPageIndex], page=document.createElement("div");page.className="memory-page";
+    const photo=document.createElement("div");photo.className="memory-page-photo";
+    const img=document.createElement("img");img.src=item.url;img.alt="A shared memory";img.loading="lazy";photo.append(img);
+    const note=document.createElement("div");note.className="memory-page-note";
+    const number=document.createElement("div");number.className="memory-page-number";number.textContent="MEMORY · "+String(memoryPageIndex+1).padStart(2,"0");
+    const date=document.createElement("div");date.className="memory-page-date";date.textContent=formatMemoryDate(item.created_at);
+    const caption=document.createElement("div");caption.className="memory-page-caption";caption.textContent=item.caption||"A little moment, kept forever.";
+    const editCaption=document.createElement("button");editCaption.className="memory-delete";editCaption.type="button";editCaption.title="Edit memory phrase";editCaption.textContent="✎";
+    editCaption.onclick=async()=>{const phrase=prompt("Write a phrase for this memory (optional):",item.caption||"");if(phrase===null)return;editCaption.disabled=true;const capPath=currentDuo.id+"/"+item.name+".caption.txt";let error=null;if(phrase.trim()){const result=await memoryBucket.upload(capPath,new Blob([phrase.trim()],{type:"text/plain;charset=utf-8"}),{upsert:true,contentType:"text/plain; charset=utf-8"});error=result.error;}else{const result=await memoryBucket.remove([capPath]);error=result.error;}if(error){status("memoryStatus","Could not save phrase: "+error.message,"error");editCaption.disabled=false;return;}item.caption=phrase.trim();caption.textContent=item.caption||"A little moment, kept forever.";editCaption.disabled=false;status("memoryStatus",item.caption?"Phrase saved to your shared memory.":"Phrase cleared. Photo kept without a caption.","ok");};
+    const mark=document.createElement("div");mark.className="memory-page-mark";mark.textContent="✦";
+    const del=document.createElement("button");del.className="memory-delete";del.type="button";del.title="Delete this photo";del.setAttribute("aria-label","Delete this photo");del.textContent="▱";
+    del.onclick=async()=>{
+      if(!currentDuo||!item?.name)return;
+      if(!confirm("Delete this photo from your shared book? This will remove it for both people."))return;
+      del.disabled=true;del.title="Deleting…";
+      const path=currentDuo.id+"/"+item.name;
+      const {error}=await memoryBucket.remove([path,path+".caption.txt"]);
+      if(error){del.disabled=false;del.title="Delete this photo";status("memoryStatus","Could not delete photo: "+error.message,"error");return;}
+      if(channel)await channel.send({type:"broadcast",event:"memory_deleted",payload:{user_id:currentUser.id,duo_id:currentDuo.id}});
+      memoryItems=memoryItems.filter(x=>x.name!==item.name);
+      if(memoryItems.length===0)memoryPageIndex=-1;
+      else if(memoryPageIndex>=memoryItems.length)memoryPageIndex=memoryItems.length-1;
+      renderMemoryBook();
+      status("memoryStatus","Photo deleted from your shared book.","ok");
+    };
+    note.append(number,date,caption,editCaption,mark,del);page.append(photo,note);wrap.append(page);
+    $("memoryPageLabel").textContent=String(memoryPageIndex+1).padStart(2,"0")+" / "+String(total).padStart(2,"0");
+    $("memoryPrev").disabled=memoryPageIndex===0;$("memoryNext").disabled=memoryPageIndex>=total-1;
+  }
+  async function loadMemoryBook(){
+    if(!currentDuo){memoryItems=[];memoryPageIndex=-1;renderMemoryBook();return;}
+    status("memoryStatus","Opening your shared memories…","ok");
+    const {data,error}=await memoryBucket.list(currentDuo.id,{limit:100,sortBy:{column:"created_at",order:"asc"}});
+    if(error){status("memoryStatus","Could not load memories: "+error.message+". Check the duospace-memories bucket and its read policy.","error");memoryItems=[];renderMemoryBook();return;}
+    const photoItems=(data||[]).filter(x=>x.name&&!x.name.startsWith(".")&&!x.name.endsWith(".caption.txt")&&/\.(png|jpe?g|gif|webp|bmp|avif|heic)$/i.test(x.name));
+    memoryItems=await Promise.all(photoItems.map(async x=>{const path=currentDuo.id+"/"+x.name;const {data:publicData}=memoryBucket.getPublicUrl(path);let caption="";const {data:capFile}=await memoryBucket.download(path+".caption.txt");if(capFile){try{caption=(await capFile.text()).trim();}catch{}}return {name:x.name,url:publicData.publicUrl,caption,created_at:x.created_at||x.updated_at||new Date().toISOString()};}));
+    memoryPageIndex=-1;renderMemoryBook();
+    status("memoryStatus",memoryItems.length?memoryItems.length+" shared photo"+(memoryItems.length===1?"":"s")+" in your book.":"Your book is waiting for its first memory. Add a photo to begin.","ok");
+  }
+  $("memoryPrev").onclick=()=>{if(memoryPageIndex>0){memoryPageIndex--;renderMemoryBook();}};
+  $("memoryNext").onclick=()=>{if(memoryPageIndex<memoryItems.length-1){memoryPageIndex++;renderMemoryBook();}};
+  $("closeMemoryBook").onclick=()=>{memoryPageIndex=-1;renderMemoryBook();};
+  $("memoryUpload").onchange=async e=>{
+    const files=Array.from(e.target.files||[]);if(!files.length)return;
+    if(!currentDuo){status("memoryStatus","Connect your Duo before adding photos.","error");e.target.value="";return;}
+    const add=$("memoryUpload");add.disabled=true;let uploaded=0;
+    for(let i=0;i<files.length;i++){
+      const file=files[i];const phrase="";
+      const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-90)||"memory.jpg";
+      const path=currentDuo.id+"/"+Date.now()+"-"+i+"-"+safeName;
+      const {error}=await memoryBucket.upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
+      if(error){status("memoryStatus","Upload failed: "+error.message+". Check the duospace-memories bucket and upload policy.","error");break;}
+      if(phrase.trim()){
+        const {error:captionError}=await memoryBucket.upload(path+".caption.txt",new Blob([phrase.trim()],{type:"text/plain;charset=utf-8"}),{upsert:false,contentType:"text/plain; charset=utf-8"});
+        if(captionError){await memoryBucket.remove([path]);status("memoryStatus","Photo uploaded but phrase save failed: "+captionError.message,"error");break;}
+      }
+      uploaded++;
+    }
+    add.disabled=false;e.target.value="";
+    if(uploaded){
+      if(channel)await channel.send({type:"broadcast",event:"memory_added",payload:{user_id:currentUser.id,duo_id:currentDuo.id}});
+      await loadMemoryBook();status("memoryStatus",uploaded+" photo"+(uploaded===1?"":"s")+" added to your shared book.","ok");
+    }
+  };
+  client.auth.getSession().then(({data})=>showApp(data.session?.user||null));
+  client.auth.onAuthStateChange((_event,session)=>{if(session?.user)showApp(session.user);else if(_event==="SIGNED_OUT")showApp(null);});
+})();
+</script>
+</body>
+</html>
